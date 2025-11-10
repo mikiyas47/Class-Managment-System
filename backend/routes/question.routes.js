@@ -3,6 +3,7 @@ import Question from '../Question.js';
 import Exam from '../Exam.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -26,12 +27,43 @@ router.get('/', authenticateToken, async (req, res) => {
     
     let query = {};
     
+    // Support filtering by exam
+    if (req.query.exam) {
+      // Validate that the exam ID is a valid MongoDB ObjectId
+      if (!mongoose.Types.ObjectId.isValid(req.query.exam)) {
+        return res.status(400).json({
+          message: 'Invalid exam ID format',
+          status: 'error'
+        });
+      }
+      query.exam = req.query.exam;
+    }
+    
     // If user is a teacher, only show questions from exams they created
     if (user && user.userType === 'teacher' && user.teacherId) {
       // First get exams created by this teacher
       const exams = await Exam.find({ teacher: user.teacherId });
       const examIds = exams.map(exam => exam._id);
-      query = { exam: { $in: examIds } };
+      
+      // Combine with existing query
+      if (query.exam) {
+        // If specific exam is requested, check if it's one of the teacher's exams
+        if (!examIds.includes(query.exam)) {
+          return res.status(403).json({
+            message: 'Access denied. You can only view questions from exams you created.',
+            status: 'error'
+          });
+        }
+        // If it is, keep the existing query
+      } else {
+        // No specific exam requested, show all teacher's exams
+        query.exam = { $in: examIds };
+      }
+    }
+    // If user is a student, they can only see questions from exams they have access to
+    else if (user && user.userType === 'student') {
+      // For students, we still allow filtering by exam (this is used in exam taking)
+      // The exam availability check should be done at the exam level, not question level
     }
     
     const questions = await Question.find(query).populate('exam').sort({ createdAt: -1 });

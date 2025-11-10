@@ -438,6 +438,7 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
     }
     
     // If user is a teacher, check if they have access to this assignment
+    // If user is a student, allow download (students can download all assignments)
     if (user && user.userType === 'teacher' && user.teacherId) {
       if (assignment.teacher._id.toString() !== user.teacherId) {
         return res.status(403).json({

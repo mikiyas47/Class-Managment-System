@@ -6,6 +6,7 @@ const ClassesPage = ({ user }) => { // Accept user prop
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [modalError, setModalError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredClasses, setFilteredClasses] = useState([]);
@@ -138,6 +139,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
     e.preventDefault();
     
     try {
+      // Clear any previous modal errors
+      setModalError(null);
+      
       // Validate required fields
       if (!formData.department || !formData.year || !formData.semester) {
         throw new Error('All fields are required');
@@ -167,8 +171,14 @@ const ClassesPage = ({ user }) => { // Accept user prop
         semester: 'first'
       });
     } catch (err) {
-      setError(err.message);
+      setModalError(err.message);
     }
+  };
+
+  // Close modal and clear errors
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setModalError(null);
   };
 
   // Format semester for display
@@ -203,14 +213,7 @@ const ClassesPage = ({ user }) => { // Accept user prop
     );
   }
 
-  if (error) {
-    return (
-      <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-        <p className="font-bold">Error</p>
-        <p>{error}</p>
-      </div>
-    );
-  }
+  // Removed page-level error display since we're now showing errors in the modal
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -333,7 +336,7 @@ const ClassesPage = ({ user }) => { // Accept user prop
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Add New Class</h2>
               <button 
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleCloseModal}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <FaTimes />
@@ -341,9 +344,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
             </div>
             
             <form onSubmit={handleAddClass} className="px-6 py-4">
-              {error && (
+              {modalError && (
                 <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
-                  {error}
+                  {modalError}
                 </div>
               )}
               
@@ -405,7 +408,7 @@ const ClassesPage = ({ user }) => { // Accept user prop
               <div className="mt-6 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-md transition-colors"
                 >
                   Cancel

@@ -105,6 +105,11 @@ router.post('/login', async (req, res) => {
           ...(userType === 'department-head' && { 
             department: user.department 
           }),
+          // Include class info for students
+          ...(userType === 'student' && { 
+            class: user.class,
+            department: user.department
+          }),
           // Include other relevant user data
           ...(userType === 'teacher' && { 
             userId: user.userId,

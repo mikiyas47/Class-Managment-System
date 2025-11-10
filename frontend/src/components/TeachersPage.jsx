@@ -6,6 +6,7 @@ const TeachersPage = () => {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [modalError, setModalError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredTeachers, setFilteredTeachers] = useState([]);
@@ -62,6 +63,9 @@ const TeachersPage = () => {
   const handleAddTeacher = async (e) => {
     e.preventDefault();
     try {
+      // Clear any previous modal errors
+      setModalError(null);
+      
       // Ensure required fields are present
       if (!formData.name || !formData.email || !formData.phoneNumber || !formData.userId || (!editingTeacher && !formData.password)) {
         throw new Error('All fields are required');
@@ -109,7 +113,7 @@ const TeachersPage = () => {
         password: ''
       });
     } catch (err) {
-      setError(err.message);
+      setModalError(err.message);
     }
   };
 
@@ -161,6 +165,7 @@ const TeachersPage = () => {
   const handleModalClose = () => {
     setIsModalOpen(false);
     setEditingTeacher(null);
+    setModalError(null);
     setFormData({
       name: '',
       email: '',
@@ -311,6 +316,12 @@ const TeachersPage = () => {
                 {editingTeacher ? 'Edit Teacher' : 'Add New Teacher'}
               </h2>
             </div>
+            {modalError && (
+              <div className="mx-6 mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded" role="alert">
+                <p className="font-bold">Error</p>
+                <p>{modalError}</p>
+              </div>
+            )}
             <form onSubmit={handleAddTeacher}>
               <div className="p-6 space-y-4">
                 <div>

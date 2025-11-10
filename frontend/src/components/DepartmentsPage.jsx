@@ -125,119 +125,162 @@ const DepartmentsPage = () => {
   };
 
   if (loading) {
-    return <div className="departments-page">Loading departments...</div>;
+    return <div className="flex justify-center items-center h-64">Loading departments...</div>;
   }
 
   return (
-    <div className="departments-page">
-      <div className="page-header">
-        <h1><FaBuilding /> Departments</h1>
-        <button className="btn-primary" onClick={openModal}>
-          <FaPlus /> Add Department
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-800 flex items-center">
+          <FaBuilding className="mr-2" /> Departments
+        </h1>
+        <button 
+          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 text-sm rounded-md flex items-center justify-center transition-colors mt-2 md:mt-0"
+          onClick={openModal}
+        >
+          <FaPlus className="mr-1.5" size={14} /> Add Department
         </button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded" role="alert">
+          <p className="font-bold">Error</p>
+          <p>{error}</p>
+          <button 
+            onClick={() => setError(null)}
+            className="mt-2 text-red-800 hover:text-red-900 font-medium"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
-      <div className="table-container">
-        <table className="departments-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Science Type</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {departments.map((department) => (
-              <tr key={department._id}>
-                <td>{department.name}</td>
-                <td>
-                  <span className={`science-tag ${department.science}`}>
-                    {department.science}
-                  </span>
-                </td>
-                <td>
-                  <button 
-                    className="btn-icon edit"
-                    onClick={() => handleEdit(department)}
-                    title="Edit"
-                  >
-                    <FaEdit />
-                  </button>
-                  <button 
-                    className="btn-icon delete"
-                    onClick={() => handleDelete(department._id)}
-                    title="Delete"
-                  >
-                    <FaTrash />
-                  </button>
-                </td>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-100">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Science Type
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {departments.length === 0 && (
-          <div className="no-data">
-            No departments found. Click "Add Department" to create one.
-          </div>
-        )}
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {departments.length > 0 ? (
+                departments.map((department) => (
+                  <tr key={department._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {department.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        department.science === 'natural' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {department.science.charAt(0).toUpperCase() + department.science.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button 
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                        onClick={() => handleEdit(department)}
+                        title="Edit"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button 
+                        className="text-red-600 hover:text-red-900"
+                        onClick={() => handleDelete(department._id)}
+                        title="Delete"
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" className="px-6 py-4 text-center text-sm text-gray-900">
+                    No departments found. Click "Add Department" to create one.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal for adding/editing departments */}
       {showModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editingDepartment ? 'Edit Department' : 'Add New Department'}</h2>
-              <button className="modal-close" onClick={closeModal}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                {editingDepartment ? 'Edit Department' : 'Add New Department'}
+              </h2>
+              <button 
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                onClick={closeModal}
+              >
                 <FaTimes />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="department-form">
-              <div className="form-group">
-                <label htmlFor="name">Department Name *</label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  className="form-input"
-                  placeholder="Enter department name"
-                />
+            <form onSubmit={handleSubmit} className="px-6 py-4">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Department Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="Enter department name"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="science" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Science Type *
+                  </label>
+                  <select
+                    id="science"
+                    name="science"
+                    value={formData.science}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Select science type</option>
+                    <option value="natural">Natural</option>
+                    <option value="social">Social</option>
+                  </select>
+                </div>
               </div>
               
-              <div className="form-group">
-                <label htmlFor="science">Science Type *</label>
-                <select
-                  id="science"
-                  name="science"
-                  value={formData.science}
-                  onChange={handleInputChange}
-                  required
-                  className="form-input"
-                >
-                  <option value="">Select science type</option>
-                  <option value="natural">Natural</option>
-                  <option value="social">Social</option>
-                </select>
-              </div>
-              
-              <div className="form-actions">
+              <div className="mt-6 flex justify-end space-x-3">
                 <button 
                   type="button" 
                   onClick={closeModal}
-                  className="btn-secondary"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="btn-primary"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   {editingDepartment ? 'Update Department' : 'Create Department'}
                 </button>

@@ -25,6 +25,7 @@ const StudentsPage = () => {
     department: '',
     class: ''
   });
+  const [modalError, setModalError] = useState(null);
 
   // Filter students based on search term and selected class
   const filterStudents = (students, search, classId) => {
@@ -211,6 +212,7 @@ const StudentsPage = () => {
   const handleModalClose = () => {
     setIsModalOpen(false);
     setEditingStudent(null);
+    setModalError(null);
     setFormData({
       name: '',
       userId: '',
@@ -239,6 +241,7 @@ const StudentsPage = () => {
     
     try {
       setError(null);
+      setModalError(null);
       
       // Log the current form data for debugging
       console.log('Form data:', formData);
@@ -305,7 +308,7 @@ const StudentsPage = () => {
       await fetchStudents(selectedClass);
       handleModalClose();
     } catch (err) {
-      setError(err.message);
+      setModalError(err.message);
       // Keep the modal open to show the error
       // Don't close the modal on error
     }
@@ -531,6 +534,14 @@ const StudentsPage = () => {
             </div>
             
             <form onSubmit={handleAddStudent} className="px-6 py-4">
+              {/* Error message in modal */}
+              {modalError && (
+                <div className="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded" role="alert">
+                  <p className="font-bold">Error</p>
+                  <p>{modalError}</p>
+                </div>
+              )}
+              
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

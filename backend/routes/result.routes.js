@@ -13,7 +13,9 @@ const router = express.Router();
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Get all results (with student filtering for students)
+// Test endpoint to check if route is accessible
+
+// Get all results
 router.get('/', authenticateToken, async (req, res) => {
   try {
     // Verify the token to get user information
@@ -211,6 +213,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create or update result based on student exams and assignments
 router.post('/calculate', authenticateToken, async (req, res) => {
   try {
+    console.log('=== RESULTS CALCULATE ENDPOINT CALLED ===');
+    console.log('Request body:', req.body);
+    console.log('Request headers:', req.headers);
+    
     const { studentId, courseId, classId } = req.body;
     
     // Verify the token to get user information
@@ -220,6 +226,7 @@ router.post('/calculate', authenticateToken, async (req, res) => {
     if (token) {
       try {
         user = jwt.verify(token, JWT_SECRET);
+        console.log('User from token:', user);
       } catch (err) {
         console.error('Token verification error:', err);
       }
@@ -227,6 +234,7 @@ router.post('/calculate', authenticateToken, async (req, res) => {
     
     // Validate required fields
     if (!studentId || !courseId || !classId) {
+      console.log('Missing required fields:', { studentId, courseId, classId });
       return res.status(400).json({
         message: 'Student, course, and class are required',
         status: 'error'
@@ -236,6 +244,7 @@ router.post('/calculate', authenticateToken, async (req, res) => {
     // If user is a student, they can only calculate results for themselves
     if (user && user.userType === 'student' && user.id) {
       if (studentId !== user.id) {
+        console.log('Access denied - student trying to access other student results');
         return res.status(403).json({
           message: 'Access denied. You can only calculate results for yourself.',
           status: 'error'
@@ -243,8 +252,11 @@ router.post('/calculate', authenticateToken, async (req, res) => {
       }
     }
     
+    console.log('Proceeding with result calculation for:', { studentId, courseId, classId });
+    
     // Find all exams for this course
     const exams = await Exam.find({ course: courseId });
+    console.log('Found exams for course:', exams.map(e => ({ id: e._id, title: e.title })));
     
     // Find student exams for this student and course
     const studentExams = await StudentExam.find({ 
@@ -252,27 +264,63 @@ router.post('/calculate', authenticateToken, async (req, res) => {
       exam: { $in: exams.map(e => e._id) }
     }).populate('exam');
     
-    // Calculate mid-exam and final-exam scores
+    console.log('Found student exams:', studentExams.length);
+    console.log('Student exams details:', studentExams.map(se => ({
+      examId: se.exam._id,
+      examTitle: se.exam.title,
+      score: se.score,
+      submittedAt: se.submittedAt
+    })));
+    
+    // Calculate scores - now more flexible to handle any exam titles
     let midExamScore = null;
     let finalExamScore = null;
+    let otherExamScores = []; // For any other exams
+    let totalExamScore = 0; // Sum of all exam scores
+    let examCount = 0; // Count of exams with scores
     
     studentExams.forEach(studentExam => {
-      if (studentExam.exam.title === 'Mid-exam' && studentExam.score !== undefined) {
-        midExamScore = studentExam.score;
-      } else if (studentExam.exam.title === 'Final-exam' && studentExam.score !== undefined) {
-        finalExamScore = studentExam.score;
+      // Check if the student exam has a score (even if it's 0)
+      if (studentExam.score !== undefined) {
+        const examTitle = studentExam.exam.title.toLowerCase();
+        console.log(`Processing exam: ${studentExam.exam.title} with score: ${studentExam.score} (type: ${typeof studentExam.score})`);
+        
+        // More flexible matching for mid-term exams
+        if ((examTitle.includes('mid') || examTitle.includes('Mid-exam')) && midExamScore === null) {
+          midExamScore = studentExam.score;
+          totalExamScore += studentExam.score;
+          examCount++;
+          console.log(`Set midExamScore to: ${studentExam.score}`);
+        } else if ((examTitle.includes('final') || examTitle.includes('Final-exam')) && finalExamScore === null) {
+          finalExamScore = studentExam.score;
+          totalExamScore += studentExam.score;
+          examCount++;
+          console.log(`Set finalExamScore to: ${studentExam.score}`);
+        } else {
+          // Add to other exam scores
+          otherExamScores.push(studentExam.score);
+          totalExamScore += studentExam.score;
+          examCount++;
+          console.log(`Added to otherExamScores: ${studentExam.score}`);
+        }
+      } else {
+        console.log(`Skipping exam ${studentExam.exam.title} - no score found`);
       }
     });
+    
+    console.log(`Total exam score: ${totalExamScore}, Exam count: ${examCount}`);
+    console.log(`Mid exam score: ${midExamScore}, Final exam score: ${finalExamScore}`);
+    console.log(`Other exam scores:`, otherExamScores);
     
     // For assignment score, we would need to implement assignment submission and grading
     // For now, we'll set it to null
     const assignmentScore = null;
     
-    // Calculate overall score (simple sum of all scores)
+    // Calculate overall score (sum of all exam scores)
     let overallScore = null;
-    const scores = [midExamScore, finalExamScore, assignmentScore].filter(score => score !== null);
-    if (scores.length > 0) {
-      overallScore = scores.reduce((sum, score) => sum + (score || 0), 0);
+    if (examCount > 0) {
+      overallScore = totalExamScore; // Using sum instead of average for consistency with previous logic
+      console.log(`Calculated overall score: ${overallScore}`);
     }
 
     // Determine grade based on overall score
@@ -289,6 +337,7 @@ router.post('/calculate', authenticateToken, async (req, res) => {
       else if (overallScore >= 45) grade = 'C-';
       else if (overallScore >= 40) grade = 'D';
       else grade = 'F';
+      console.log(`Assigned grade: ${grade}`);
     }
     
     // Create or update result
@@ -303,12 +352,15 @@ router.post('/calculate', authenticateToken, async (req, res) => {
       grade
     };
     
+    console.log('Result data to save:', resultData);
+    
     // Check if result already exists
     const existingResult = await Result.findOne({ student: studentId, course: courseId });
     
     let savedResult;
     if (existingResult) {
       // Update existing result
+      console.log('Updating existing result with ID:', existingResult._id);
       savedResult = await Result.findByIdAndUpdate(
         existingResult._id,
         resultData,
@@ -316,6 +368,7 @@ router.post('/calculate', authenticateToken, async (req, res) => {
       ).populate('student').populate('course').populate('class');
     } else {
       // Create new result
+      console.log('Creating new result');
       const result = new Result(resultData);
       savedResult = await result.save();
       savedResult = await Result.findById(savedResult._id)
@@ -323,6 +376,8 @@ router.post('/calculate', authenticateToken, async (req, res) => {
         .populate('course')
         .populate('class');
     }
+    
+    console.log('Result saved successfully:', savedResult);
     
     res.status(201).json({
       message: 'Result calculated and saved successfully',

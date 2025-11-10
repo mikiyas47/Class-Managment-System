@@ -5,6 +5,7 @@ const CoursesPage = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [modalError, setModalError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -177,6 +178,7 @@ const CoursesPage = () => {
   const handleModalClose = () => {
     setIsModalOpen(false);
     setEditingCourse(null);
+    setModalError(null);
     setFormData({
       subject: '',
       code: '',
@@ -201,6 +203,8 @@ const CoursesPage = () => {
     e.preventDefault();
     
     try {
+      // Clear any previous modal errors
+      setModalError(null);
       setError(null);
       
       // Validate required fields (excluding department and class since they're pre-selected)
@@ -251,7 +255,7 @@ const CoursesPage = () => {
       await fetchCourses();
       handleModalClose();
     } catch (err) {
-      setError(err.message);
+      setModalError(err.message);
       // Keep the modal open to show the error
     }
   };
@@ -456,6 +460,12 @@ const CoursesPage = () => {
                 <FaTimes />
               </button>
             </div>
+            {modalError && (
+              <div className="mx-6 mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded" role="alert">
+                <p className="font-bold">Error</p>
+                <p>{modalError}</p>
+              </div>
+            )}
             
             <form onSubmit={handleAddCourse} className="px-6 py-4">
               <div className="space-y-4">

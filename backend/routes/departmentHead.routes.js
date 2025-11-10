@@ -1,6 +1,9 @@
 import express from 'express';
 import DepartmentHead from '../DepartmentHead.js';
 import Department from '../Department.js';
+import Admin from '../Admin.js';
+import Teacher from '../Teacher.js';
+import Student from '../Student.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -72,7 +75,32 @@ router.post('/', authenticateToken, async (req, res) => {
     
     if (existingDepartmentHead) {
       return res.status(400).json({
-        message: 'Department Head with this email already exists',
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    // Check if email already exists in other user types (Admin, Teacher, Student)
+    const existingAdmin = await Admin.findOne({ email });
+    if (existingAdmin) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    const existingTeacher = await Teacher.findOne({ email });
+    if (existingTeacher) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    const existingStudent = await Student.findOne({ email });
+    if (existingStudent) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
         status: 'error'
       });
     }
@@ -82,7 +110,27 @@ router.post('/', authenticateToken, async (req, res) => {
     
     if (existingPhone) {
       return res.status(400).json({
-        message: 'Department Head with this phone number already exists',
+        message: 'A user with this phone number already exists',
+        status: 'error'
+      });
+    }
+    
+    // Check if phone number already exists in other user types (Admin has no phone, Teacher uses phoneNumber, Student uses phoneNo)
+    // Note: Admin doesn't have a phone number field
+    
+    // Teacher uses 'phoneNumber' field instead of 'phoneNo'
+    const existingTeacherPhone = await Teacher.findOne({ phoneNumber: phoneNo });
+    if (existingTeacherPhone) {
+      return res.status(400).json({
+        message: 'A user with this phone number already exists',
+        status: 'error'
+      });
+    }
+    
+    const existingStudentPhone = await Student.findOne({ phoneNo });
+    if (existingStudentPhone) {
+      return res.status(400).json({
+        message: 'A user with this phone number already exists',
         status: 'error'
       });
     }
@@ -153,7 +201,32 @@ router.put('/:id', authenticateToken, async (req, res) => {
     
     if (existingEmail) {
       return res.status(400).json({
-        message: 'Department Head with this email already exists',
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    // Check if email already exists in other user types (Admin, Teacher, Student)
+    const existingAdmin = await Admin.findOne({ email });
+    if (existingAdmin) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    const existingTeacher = await Teacher.findOne({ email });
+    if (existingTeacher) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    const existingStudent = await Student.findOne({ email });
+    if (existingStudent) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
         status: 'error'
       });
     }
@@ -166,7 +239,27 @@ router.put('/:id', authenticateToken, async (req, res) => {
     
     if (existingPhone) {
       return res.status(400).json({
-        message: 'Department Head with this phone number already exists',
+        message: 'A user with this phone number already exists',
+        status: 'error'
+      });
+    }
+    
+    // Check if phone number already exists in other user types (Admin has no phone, Teacher uses phoneNumber, Student uses phoneNo)
+    // Note: Admin doesn't have a phone number field
+    
+    // Teacher uses 'phoneNumber' field instead of 'phoneNo'
+    const existingTeacherPhone = await Teacher.findOne({ phoneNumber: phoneNo });
+    if (existingTeacherPhone) {
+      return res.status(400).json({
+        message: 'A user with this phone number already exists',
+        status: 'error'
+      });
+    }
+    
+    const existingStudentPhone = await Student.findOne({ phoneNo });
+    if (existingStudentPhone) {
+      return res.status(400).json({
+        message: 'A user with this phone number already exists',
         status: 'error'
       });
     }

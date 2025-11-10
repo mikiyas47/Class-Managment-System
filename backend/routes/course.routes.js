@@ -84,12 +84,20 @@ router.get('/:id', async (req, res) => {
 // Create new course
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { department, class: classId, teacher, subject, code } = req.body;
+    const { department, class: classId, teacher, subject, code, crh } = req.body;
     
     // Validate required fields
-    if (!department || !classId || !teacher || !subject) {
+    if (!department || !classId || !teacher || !subject || crh === undefined || crh === null) {
       return res.status(400).json({
-        message: 'Department, class, teacher, and subject are required',
+        message: 'Department, class, teacher, subject, and credit hours are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate crh is a number and >= 0
+    if (isNaN(crh) || crh < 0) {
+      return res.status(400).json({
+        message: 'Credit hours must be a number greater than or equal to 0',
         status: 'error'
       });
     }
@@ -110,7 +118,8 @@ router.post('/', authenticateToken, async (req, res) => {
       class: classId,
       teacher,
       subject,
-      code
+      code,
+      crh
     });
     
     await course.save();
@@ -145,12 +154,20 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { department, class: classId, teacher, subject, code } = req.body;
+    const { department, class: classId, teacher, subject, code, crh } = req.body;
     
     // Validate required fields
-    if (!department || !classId || !teacher || !subject) {
+    if (!department || !classId || !teacher || !subject || crh === undefined || crh === null) {
       return res.status(400).json({
-        message: 'Department, class, teacher, and subject are required',
+        message: 'Department, class, teacher, subject, and credit hours are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate crh is a number and >= 0
+    if (isNaN(crh) || crh < 0) {
+      return res.status(400).json({
+        message: 'Credit hours must be a number greater than or equal to 0',
         status: 'error'
       });
     }
@@ -172,7 +189,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     
     const course = await Course.findByIdAndUpdate(
       id,
-      { department, class: classId, teacher, subject, code },
+      { department, class: classId, teacher, subject, code, crh },
       { new: true, runValidators: true }
     ).populate('department').populate('class').populate('teacher');
     

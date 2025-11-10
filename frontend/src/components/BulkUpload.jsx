@@ -131,71 +131,44 @@ const BulkUpload = ({ onUpload, entityName, endpoint, token, departmentId = '', 
           
           console.log('Error source:', errorSource);
           
-          // Check if this is a student bulk upload with specific duplicate messages
+          // Simplified error message formatting
           let errorMessages = '';
-          if (entityName === 'student' && hasDataErrors) {
-            // For students, show the detailed duplicate information
-            errorMessages = data.data.errors.map(error => {
-              if (typeof error === 'object' && error !== null) {
-                // If it's the new detailed error object with check, found, and duplicate properties
-                if (error.check && error.found && error.duplicate) {
-                  return `${error.check}\n${error.found}\n${error.duplicate}`;
-                } else if (error.message) {
+          if (errorSource.length > 0) {
+            // For students, the errors are in data.data.errors as strings
+            errorMessages = errorSource.map(error => {
+              if (typeof error === 'string') {
+                return error;
+              } else if (typeof error === 'object' && error !== null) {
+                if (error.message) {
                   return error.message;
                 } else {
                   return JSON.stringify(error);
                 }
-              } else if (typeof error === 'string' && error.includes('Student with')) {
-                // Extract the duplicate information from the backend message
-                return error;
-              } else if (typeof error === 'string') {
-                return error;
               } else {
-                return JSON.stringify(error);
+                return String(error);
               }
             }).join('\n\n');
           } else if (data.data && data.data.duplicates && data.data.duplicates > 0) {
-            // Handle the case where we have duplicates but in a different format
-            if (data.data.errors && data.data.errors.length > 0) {
-              errorMessages = data.data.errors.map(error => {
-                if (typeof error === 'object' && error !== null) {
-                  if (error.check && error.found && error.duplicate) {
-                    return `${error.check}\n${error.found}\n${error.duplicate}`;
-                  } else if (error.message) {
-                    return error.message;
-                  } else {
-                    return JSON.stringify(error);
-                  }
-                } else {
-                  return error;
-                }
-              }).join('\n\n');
-            } else {
-              errorMessages = `Found ${data.data.duplicates} duplicate student(s)`;
-            }
-          } else {
-            // For other cases (teachers or older format), use the existing logic
-            errorMessages = errorSource.map(error => {
-              if (typeof error === 'string') {
-                return error;
-              } else if (error.error) {
-                return `Row ${error.row || 'N/A'}: ${error.error}`;
-              } else {
-                return JSON.stringify(error);
-              }
-            }).join('\n');
+            errorMessages = `Found ${data.data.duplicates} duplicate student(s)`;
           }
           
           console.log('Formatted error messages:', errorMessages);
           
+          const errorCount = errorSource.length || data.data?.duplicates || data.errorCount || 0;
           setMessage({ 
-            text: `Upload completed with ${errorSource.length || data.data?.duplicates || data.errorCount || 0} error(s):\n${errorMessages}`,
+            text: errorCount > 0 
+              ? `Upload completed with ${errorCount} error(s):\n${errorMessages}`
+              : 'Upload completed with errors',
             type: 'error' 
           });
         } else {
           console.log('No errors detected, showing success message');
+          const createdCount = data.data?.created?.length || data.addedCount || 0;
+          const messageText = createdCount > 0 
+            ? `Successfully uploaded ${createdCount} ${entityName}(s).` 
+            : 'Upload completed with no new records added.';
           setMessage({ 
-            text: `Successfully uploaded ${data.addedCount || data.data?.created?.length || 0} ${entityName}(s).`,
+            text: messageText,
             type: 'success' 
           });
         }

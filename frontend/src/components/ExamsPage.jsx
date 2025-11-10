@@ -4,6 +4,7 @@ import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaClipboardList } from 'react
 const ExamsPage = ({ user }) => {
   const [exams, setExams] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -64,6 +65,9 @@ const ExamsPage = ({ user }) => {
 
       const coursesData = await coursesResponse.json();
       const teacherCourses = coursesData.data || [];
+      
+      // Set courses state
+      setCourses(teacherCourses);
       
       // Extract unique class IDs from the courses
       const classIds = [...new Set(teacherCourses.map(course => course.class._id || course.class))];
@@ -133,8 +137,8 @@ const ExamsPage = ({ user }) => {
     e.preventDefault();
     
     // Validate that the selected class is one the teacher teaches
-    const isValidClass = classes.some(cls => cls._id === formData.class);
-    if (!isValidClass) {
+    const selectedCourse = courses.find(course => course.class._id === formData.class);
+    if (!selectedCourse) {
       setError('Please select a valid class that you teach');
       return;
     }
@@ -156,6 +160,7 @@ const ExamsPage = ({ user }) => {
         body: JSON.stringify({
           ...formData,
           teacher: user._id,
+          course: selectedCourse._id, // Include the course ID
           duration: parseInt(formData.duration)
         })
       });
@@ -190,6 +195,11 @@ const ExamsPage = ({ user }) => {
       setError('This exam is for a class you do not teach');
       return;
     }
+    
+    // Find the course for this exam's class
+    const examCourse = courses.find(course => 
+      course.class._id === (exam.class._id || exam.class)
+    );
     
     setEditingExam(exam);
     setFormData({

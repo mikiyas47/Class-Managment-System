@@ -352,7 +352,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
     
     // Validate required fields
-    if (!classId || !teacher || !course || !title || !duration || !startTime) {
+    if (!classId || !teacher || !title || !duration || !startTime) {
       return res.status(400).json({
         message: 'All fields are required',
         status: 'error'

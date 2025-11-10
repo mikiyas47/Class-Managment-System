@@ -7,6 +7,15 @@ import multer from 'multer';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
 
+// Dynamically import user models to avoid circular dependencies
+let Admin, DepartmentHead, Teacher;
+
+const initializeModels = async () => {
+  if (!Admin) Admin = (await import('../Admin.js')).default;
+  if (!DepartmentHead) DepartmentHead = (await import('../DepartmentHead.js')).default;
+  if (!Teacher) Teacher = (await import('../Teacher.js')).default;
+};
+
 const router = express.Router();
 
 // JWT Configuration
@@ -124,10 +133,12 @@ router.get('/class/:classId', async (req, res) => {
 // Create new student
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { userId, department, class: classId, email, password, phoneNo } = req.body;
+    console.log('Student creation request body:', req.body);
+    const { name, userId, department, class: classId, email, password, phoneNo } = req.body;
     
     // Validate required fields
-    if (!userId || !department || !classId || !email || !password || !phoneNo) {
+    if (!name || !userId || !department || !classId || !email || !password || !phoneNo) {
+      console.log('Missing required fields:', { name, userId, department, classId, email, password, phoneNo });
       return res.status(400).json({
         message: 'All fields are required',
         status: 'error'
@@ -145,9 +156,9 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     
     // Check if student with this email already exists
-    const existingEmail = await Student.findOne({ email });
+    const existingStudentEmail = await Student.findOne({ email });
     
-    if (existingEmail) {
+    if (existingStudentEmail) {
       return res.status(400).json({
         message: 'Student with this email already exists',
         status: 'error'
@@ -155,17 +166,66 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     
     // Check if student with this phone number already exists
-    const existingPhone = await Student.findOne({ phoneNo });
+    const existingStudentPhone = await Student.findOne({ phoneNo });
     
-    if (existingPhone) {
+    if (existingStudentPhone) {
       return res.status(400).json({
         message: 'Student with this phone number already exists',
         status: 'error'
       });
     }
     
+    // Check if email or phone number already exists in other user types (Admin, DepartmentHead, Teacher)
+    const Admin = (await import('../Admin.js')).default;
+    const DepartmentHead = (await import('../DepartmentHead.js')).default;
+    const Teacher = (await import('../Teacher.js')).default;
+    
+    const existingAdmin = await Admin.findOne({ email });
+    if (existingAdmin) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    const existingDepartmentHead = await DepartmentHead.findOne({ email });
+    if (existingDepartmentHead) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    const existingTeacher = await Teacher.findOne({ email });
+    if (existingTeacher) {
+      return res.status(400).json({
+        message: 'A user with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    // Check if phone number already exists in other user types (DepartmentHead, Teacher)
+    // Note: Admin doesn't have a phone number field
+    const existingDepartmentHeadPhone = await DepartmentHead.findOne({ phoneNo });
+    if (existingDepartmentHeadPhone) {
+      return res.status(400).json({
+        message: 'A user with this phone number already exists',
+        status: 'error'
+      });
+    }
+    
+    // Note: Teacher uses 'phoneNumber' field instead of 'phoneNo'
+    const existingTeacherPhone = await Teacher.findOne({ phoneNumber: phoneNo });
+    if (existingTeacherPhone) {
+      return res.status(400).json({
+        message: 'A user with this phone number already exists',
+        status: 'error'
+      });
+    }
+    
     // Create new student
     const student = new Student({
+      name,
       userId,
       department,
       class: classId,
@@ -334,6 +394,54 @@ router.post('/bulk-upload', authenticateToken, (req, res, next) => {
               continue;
             }
             
+            // Check if email already exists in other user types (Admin, DepartmentHead, Teacher)
+            const Admin = (await import('../Admin.js')).default;
+            const DepartmentHead = (await import('../DepartmentHead.js')).default;
+            const Teacher = (await import('../Teacher.js')).default;
+            
+            const existingAdmin = await Admin.findOne({ email: studentData.email });
+            if (existingAdmin) {
+              const errorMessage = `A user with this email already exists`;
+              console.log(`Duplicate found: ${errorMessage}`);
+              duplicateErrors.push(errorMessage);
+              continue;
+            }
+            
+            const existingDepartmentHead = await DepartmentHead.findOne({ email: studentData.email });
+            if (existingDepartmentHead) {
+              const errorMessage = `A user with this email already exists`;
+              console.log(`Duplicate found: ${errorMessage}`);
+              duplicateErrors.push(errorMessage);
+              continue;
+            }
+            
+            const existingTeacher = await Teacher.findOne({ email: studentData.email });
+            if (existingTeacher) {
+              const errorMessage = `A user with this email already exists`;
+              console.log(`Duplicate found: ${errorMessage}`);
+              duplicateErrors.push(errorMessage);
+              continue;
+            }
+            
+            // Check if phone number already exists in other user types (DepartmentHead, Teacher)
+            // Note: Admin doesn't have a phone number field
+            const existingDepartmentHeadPhone = await DepartmentHead.findOne({ phoneNo: studentData.phoneNo });
+            if (existingDepartmentHeadPhone) {
+              const errorMessage = `A user with this phone number already exists`;
+              console.log(`Duplicate found: ${errorMessage}`);
+              duplicateErrors.push(errorMessage);
+              continue;
+            }
+            
+            // Note: Teacher uses 'phoneNumber' field instead of 'phoneNo'
+            const existingTeacherPhone = await Teacher.findOne({ phoneNumber: studentData.phoneNo });
+            if (existingTeacherPhone) {
+              const errorMessage = `A user with this phone number already exists`;
+              console.log(`Duplicate found: ${errorMessage}`);
+              duplicateErrors.push(errorMessage);
+              continue;
+            }
+            
             // Create new student
             console.log(`Creating new student: ${studentData.userId}`);
             const student = new Student(studentData);
@@ -383,10 +491,12 @@ router.post('/bulk-upload', authenticateToken, (req, res, next) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, department, class: classId, email, phoneNo } = req.body;
+    console.log('Student update request body:', req.body);
+    const { name, userId, department, class: classId, email, phoneNo } = req.body;
     
     // Validate required fields (password is not required for updates)
-    if (!userId || !department || !classId || !email || !phoneNo) {
+    if (!name || !userId || !department || !classId || !email || !phoneNo) {
+      console.log('Missing required fields for update:', { name, userId, department, classId, email, phoneNo });
       return res.status(400).json({
         message: 'All fields are required',
         status: 'error'
@@ -434,7 +544,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     
     const student = await Student.findByIdAndUpdate(
       id,
-      { userId, department, class: classId, email, phoneNo },
+      { name, userId, department, class: classId, email, phoneNo },
       { new: true, runValidators: true }
     ).populate('department').populate('class');
     
@@ -507,12 +617,12 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get student courses (both regular and added courses)
+// Get student courses (from both regular and added courses)
 router.get('/:id/courses', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Import AddStudent model
+
+    // Import AddStudent and Course models
     const AddStudent = (await import('../AddStudent.js')).default;
     const Course = (await import('../Course.js')).default;
     
@@ -525,7 +635,7 @@ router.get('/:id/courses', authenticateToken, async (req, res) => {
         status: 'error'
       });
     }
-    
+
     // Get regular courses for the student's class
     const regularCourses = await Course.find({ class: student.class._id })
       .populate('department')
@@ -534,21 +644,18 @@ router.get('/:id/courses', authenticateToken, async (req, res) => {
     
     // Get added courses for this student
     const addedCoursesRecords = await AddStudent.find({ student: id, status: 'enrolled' })
-      .populate('course')
-      .populate('assignedClass');
+      .populate('course');
     
-    // Extract the course objects from added courses
+    // Extract course details from added courses
     const addedCourses = addedCoursesRecords.map(record => record.course);
     
-    // Combine regular and added courses, removing duplicates
+    // Combine regular and added courses
     const allCourses = [...regularCourses, ...addedCourses];
-    const uniqueCourses = Array.from(new Set(allCourses.map(course => course._id.toString())))
-      .map(id => allCourses.find(course => course._id.toString() === id));
-    
+
     res.json({
       message: 'Student courses retrieved successfully',
-      data: uniqueCourses,
-      count: uniqueCourses.length,
+      data: allCourses,
+      count: allCourses.length,
       status: 'success'
     });
   } catch (error) {
@@ -565,7 +672,7 @@ router.get('/:id/courses', authenticateToken, async (req, res) => {
 router.get('/:id/exams', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Import AddStudent and Exam models
     const AddStudent = (await import('../AddStudent.js')).default;
     const Exam = (await import('../Exam.js')).default;
@@ -580,7 +687,7 @@ router.get('/:id/exams', authenticateToken, async (req, res) => {
         status: 'error'
       });
     }
-    
+
     // Get regular courses for the student's class
     const regularCourses = await Course.find({ class: student.class._id });
     const regularCourseIds = regularCourses.map(course => course._id);
@@ -593,27 +700,17 @@ router.get('/:id/exams', authenticateToken, async (req, res) => {
     const allCourseIds = [...regularCourseIds, ...addedCourseIds];
     
     // Get exams for all courses
-    const now = new Date();
     const exams = await Exam.find({
-      course: { $in: allCourseIds },
-      startTime: { $lte: now }
+      course: { $in: allCourseIds }
     })
-    .populate('course', 'subject')
+    .populate('course')
     .populate('class')
-    .populate('teacher')
-    .sort({ startTime: -1 });
-    
-    // Filter exams that haven't ended yet
-    const filteredExams = exams.filter(exam => {
-      // Calculate end time: startTime + duration (in minutes)
-      const endTime = new Date(exam.startTime.getTime() + exam.duration * 60000);
-      return now < endTime;
-    });
-    
+    .sort({ date: 1 });
+
     res.json({
       message: 'Student exams retrieved successfully',
-      data: filteredExams,
-      count: filteredExams.length,
+      data: exams,
+      count: exams.length,
       status: 'success'
     });
   } catch (error) {
@@ -626,108 +723,20 @@ router.get('/:id/exams', authenticateToken, async (req, res) => {
   }
 });
 
-// Get student assignments (from both regular and added courses)
-router.get('/:id/assignments', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Import AddStudent and Assignment models
-    const AddStudent = (await import('../AddStudent.js')).default;
-    const Assignment = (await import('../Assignment.js')).default;
-    const Course = (await import('../Course.js')).default;
-    
-    // Get the student
-    const student = await Student.findById(id).populate('class');
-    
-    if (!student) {
-      return res.status(404).json({
-        message: 'Student not found',
-        status: 'error'
-      });
-    }
-    
-    // Get regular courses for the student's class
-    const regularCourses = await Course.find({ class: student.class._id });
-    const regularCourseIds = regularCourses.map(course => course._id);
-    const regularClassIds = regularCourses.map(course => course.class);
-    
-    // Get added courses for this student
-    const addedCoursesRecords = await AddStudent.find({ student: id, status: 'enrolled' });
-    const addedCourseIds = addedCoursesRecords.map(record => record.course);
-    const addedClassIds = addedCoursesRecords.map(record => record.assignedClass);
-    
-    // Combine course and class IDs
-    const allCourseIds = [...regularCourseIds, ...addedCourseIds];
-    const allClassIds = [...regularClassIds, ...addedClassIds];
-    
-    // Get assignments for all courses and classes
-    const assignments = await Assignment.find({
-      $or: [
-        { course: { $in: allCourseIds } },
-        { class: { $in: allClassIds } }
-      ]
-    })
-    .populate('class')
-    .populate('teacher')
-    .sort({ createdAt: -1 });
-    
-    res.json({
-      message: 'Student assignments retrieved successfully',
-      data: assignments,
-      count: assignments.length,
-      status: 'success'
-    });
-  } catch (error) {
-    console.error('Error fetching student assignments:', error);
-    res.status(500).json({
-      message: 'Error retrieving student assignments',
-      error: error.message,
-      status: 'error'
-    });
-  }
-});
-
-// Get student results (from both regular and added courses)
+// Get student results
 router.get('/:id/results', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Import AddStudent and Result models
-    const AddStudent = (await import('../AddStudent.js')).default;
+
+    // Import Result model
     const Result = (await import('../Result.js')).default;
-    const Course = (await import('../Course.js')).default;
     
-    // Get the student
-    const student = await Student.findById(id).populate('class');
-    
-    if (!student) {
-      return res.status(404).json({
-        message: 'Student not found',
-        status: 'error'
-      });
-    }
-    
-    // Get regular courses for the student's class
-    const regularCourses = await Course.find({ class: student.class._id });
-    const regularCourseIds = regularCourses.map(course => course._id);
-    
-    // Get added courses for this student
-    const addedCoursesRecords = await AddStudent.find({ student: id, status: 'enrolled' });
-    const addedCourseIds = addedCoursesRecords.map(record => record.course);
-    
-    // Combine course IDs
-    const allCourseIds = [...regularCourseIds, ...addedCourseIds];
-    
-    // Get results for all courses
-    const results = await Result.find({
-      student: id,
-      course: { $in: allCourseIds }
-    })
-    .populate('student')
-    .populate('course')
-    .populate('class')
-    .sort({ createdAt: -1 });
-    
+    // Get results for this student
+    const results = await Result.find({ student: id })
+      .populate('student')
+      .populate('course')
+      .sort({ createdAt: -1 });
+
     res.json({
       message: 'Student results retrieved successfully',
       data: results,
@@ -744,11 +753,11 @@ router.get('/:id/results', authenticateToken, async (req, res) => {
   }
 });
 
-// Get student announcements (from both regular and added courses)
+// Get student announcements (from classes they belong to)
 router.get('/:id/announcements', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Import AddStudent and Announcement models
     const AddStudent = (await import('../AddStudent.js')).default;
     const Announcement = (await import('../Announcement.js')).default;
@@ -763,7 +772,7 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
         status: 'error'
       });
     }
-    
+
     // Get regular courses for the student's class
     const regularCourses = await Course.find({ class: student.class._id });
     const regularClassIds = regularCourses.map(course => course.class);
@@ -782,7 +791,7 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
     .populate('class')
     .populate('teacher')
     .sort({ createdAt: -1 });
-    
+
     res.json({
       message: 'Student announcements retrieved successfully',
       data: announcements,
@@ -793,6 +802,78 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
     console.error('Error fetching student announcements:', error);
     res.status(500).json({
       message: 'Error retrieving student announcements',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Get student assignments (from both regular and added courses)
+router.get('/:id/assignments', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Import AddStudent and Assignment models
+    const AddStudent = (await import('../AddStudent.js')).default;
+    const Assignment = (await import('../Assignment.js')).default;
+    const Course = (await import('../Course.js')).default;
+    
+    // Get the student
+    const student = await Student.findById(id).populate('class');
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+
+    // Get regular courses for the student's class
+    const regularCourses = await Course.find({ class: student.class._id });
+    const regularClassIds = regularCourses.map(course => course.class);
+    
+    // Get added courses for this student
+    const addedCoursesRecords = await AddStudent.find({ student: id, status: 'enrolled' });
+    const addedClassIds = addedCoursesRecords.map(record => record.assignedClass);
+    
+    // Combine class IDs
+    const allClassIds = [...regularClassIds, ...addedClassIds];
+    
+    // Get assignments for all classes
+    let assignments = await Assignment.find({
+      class: { $in: allClassIds }
+    })
+    .populate('class')
+    .populate('teacher')
+    .sort({ createdAt: -1 });
+    
+    // Populate course information for each assignment
+    const assignmentsWithCourses = [];
+    for (let assignment of assignments) {
+      // Convert to plain object
+      const assignmentObj = assignment.toObject();
+      
+      // Find the course that matches this assignment's class
+      const course = await Course.findOne({ class: assignment.class._id }).populate('teacher').populate('department');
+      if (course) {
+        assignmentObj.course = course;
+      }
+      
+      assignmentsWithCourses.push(assignmentObj);
+    }
+    
+    assignments = assignmentsWithCourses;
+
+    res.json({
+      message: 'Student assignments retrieved successfully',
+      data: assignments,
+      count: assignments.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching student assignments:', error);
+    res.status(500).json({
+      message: 'Error retrieving student assignments',
       error: error.message,
       status: 'error'
     });

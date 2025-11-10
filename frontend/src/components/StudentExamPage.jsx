@@ -105,6 +105,7 @@ const StudentExamPage = ({ user }) => {
       
         if (!examRes.ok) {
           const errorData = await examRes.json().catch(() => ({}));
+          console.log('Exam fetch error response:', errorData);
           // Check if it's a specific "not available yet" error
           if (errorData.message && errorData.message.includes('not available yet')) {
             throw new Error(`This exam is not available yet. Please check back at the scheduled time.`);
@@ -117,21 +118,46 @@ const StudentExamPage = ({ user }) => {
         }
       
         const examData = await examRes.json();
+        console.log('Exam data received:', examData);
         setExam(examData.data);
       
+        // Check if exam should be started based on current time
+        const now = new Date();
+        const examStartTime = new Date(examData.data.startTime);
+        const examEndTime = new Date(examStartTime.getTime() + examData.data.duration * 60000);
+      
+        console.log('Current time:', now);
+        console.log('Exam start time:', examStartTime);
+        console.log('Exam end time:', examEndTime);
+      
+        // If current time is within exam time, set exam as started
+        if (now >= examStartTime && now < examEndTime) {
+          setExamStarted(true);
+          // Calculate initial time left
+          const initialTimeLeft = Math.floor((examEndTime - now) / 1000);
+          setTimeLeft(initialTimeLeft);
+          console.log('Exam is active, time left:', initialTimeLeft);
+        }
+      
         // Fetch questions for this exam
-        const questionsRes = await fetch(`http://localhost:5000/api/questions?exam=${examId}`, {
+        const questionsUrl = `http://localhost:5000/api/questions?exam=${examId}`;
+        console.log('Fetching questions from URL:', questionsUrl);
+        const questionsRes = await fetch(questionsUrl, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
       
+        console.log('Questions response status:', questionsRes.status);
         if (!questionsRes.ok) {
-          throw new Error('Failed to fetch questions');
+          const questionsErrorData = await questionsRes.json().catch(() => ({}));
+          console.log('Questions fetch error response:', questionsErrorData);
+          throw new Error(questionsErrorData.message || 'Failed to fetch questions');
         }
       
         const questionsData = await questionsRes.json();
+        console.log('Questions data received:', questionsData);
         setQuestions(questionsData.data || []);
       
         // Initialize student answers
@@ -150,8 +176,10 @@ const StudentExamPage = ({ user }) => {
         setLoading(false);
       }
     };
-  
-    fetchExamData();
+
+    if (examId) {
+      fetchExamData();
+    }
   }, [examId]);
 
   // Timer effect - now primarily for UI updates based on WebSocket
@@ -163,6 +191,26 @@ const StudentExamPage = ({ user }) => {
       handleSubmitExam(true); // Pass true to indicate auto-submit due to time expiration
     }
   }, [timeLeft, examStarted, examSubmitted, isSubmitting]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    let timer;
+    if (examStarted && !examSubmitted && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [examStarted, examSubmitted, timeLeft]);
 
   // Handle answer selection
   const handleAnswerSelect = (questionId, option) => {
@@ -214,12 +262,14 @@ const StudentExamPage = ({ user }) => {
 
   // Submit the entire exam
   const handleSubmitExam = async (isAutoSubmit = false) => {
-    console.log('handleSubmitExam called with isAutoSubmit:', isAutoSubmit);
+    console.log('=== handleSubmitExam called ===');
+    console.log('isAutoSubmit:', isAutoSubmit);
     console.log('Current state - examSubmitted:', examSubmitted, 'isSubmitting:', isSubmitting);
     
     // Prevent multiple submissions
     if (isSubmitting || examSubmitted) {
       console.log('Exam already submitted or being submitted, returning early');
+      console.log('isSubmitting:', isSubmitting, 'examSubmitted:', examSubmitted);
       return;
     }
     
@@ -233,34 +283,68 @@ const StudentExamPage = ({ user }) => {
       console.log('Starting exam submission process');
       setIsSubmitting(true); // Set submission flag
       const token = localStorage.getItem('token');
+      console.log('Token retrieved from localStorage:', token ? 'Token exists' : 'No token');
       
       // Wait longer to ensure all WebSocket answers are sent and saved
       console.log('Waiting for answers to be saved...');
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log('Finished waiting for answers to be saved');
       
-      // Create a student exam record (or get existing one)
-      const studentExamRes = await fetch('http://localhost:5000/api/student-exams', {
-        method: 'POST',
+      // First, check if a student exam record already exists
+      console.log('Checking if student exam record already exists');
+      const checkStudentExamRes = await fetch(`http://localhost:5000/api/student-exams?student=${user._id}&exam=${examId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          student: user._id,
-          exam: examId
-        })
+        }
       });
       
-      if (!studentExamRes.ok) {
-        throw new Error('Failed to create student exam record');
+      console.log('Check student exam response status:', checkStudentExamRes.status);
+      
+      let studentExamId = null;
+      
+      if (checkStudentExamRes.ok) {
+        const checkData = await checkStudentExamRes.json();
+        console.log('Check student exam response:', checkData);
+      
+        if (checkData.data && checkData.data.length > 0) {
+          // Student exam record already exists
+          studentExamId = checkData.data[0]._id;
+          console.log('Found existing student exam record with ID:', studentExamId);
+        } else {
+          // Create a new student exam record
+          console.log('Creating new student exam record');
+          const studentExamRes = await fetch('http://localhost:5000/api/student-exams', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              student: user._id,
+              exam: examId
+            })
+          });
+          
+          console.log('Create student exam response status:', studentExamRes.status);
+          
+          if (!studentExamRes.ok) {
+            const errorData = await studentExamRes.json().catch(() => ({}));
+            console.error('Failed to create student exam record:', errorData);
+            throw new Error(errorData.message || 'Failed to create student exam record');
+          }
+          
+          const studentExamData = await studentExamRes.json();
+          studentExamId = studentExamData.data._id;
+          console.log('Created new student exam record with ID:', studentExamId);
+        }
+      } else {
+        throw new Error('Failed to check student exam record');
       }
       
-      const studentExamData = await studentExamRes.json();
-      const studentExamId = studentExamData.data._id;
-      
       // Update student exam with submittedAt timestamp
-      await fetch(`http://localhost:5000/api/student-exams/${studentExamId}`, {
+      console.log('Updating student exam with submittedAt timestamp');
+      const updateRes = await fetch(`http://localhost:5000/api/student-exams/${studentExamId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -271,6 +355,90 @@ const StudentExamPage = ({ user }) => {
         })
       });
       
+      console.log('Update student exam response status:', updateRes.status);
+      
+      if (!updateRes.ok) {
+        const errorData = await updateRes.json().catch(() => ({}));
+        console.error('Failed to update student exam record:', errorData);
+        throw new Error(errorData.message || 'Failed to update student exam record');
+      }
+      
+      // Calculate score and save results only if exam and user data are available
+      if (exam && exam.course && user && user.class) {
+        console.log('Exam and user data available for result calculation');
+        console.log('Exam data:', exam);
+        console.log('User data:', user);
+        
+        // Calculate score and save results
+        console.log('Calculating score and saving results');
+        const calculateScoreRes = await fetch(`http://localhost:5000/api/student-exams/${studentExamId}/calculate-score`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('Calculate score response status:', calculateScoreRes.status);
+        
+        if (!calculateScoreRes.ok) {
+          const errorData = await calculateScoreRes.json().catch(() => ({}));
+          console.error('Failed to calculate score:', errorData);
+          // Don't throw error here as the exam submission was successful
+        } else {
+          const scoreData = await calculateScoreRes.json();
+          console.log('Score calculated:', scoreData);
+        }
+        
+        // Save results to results table
+        console.log('Saving results to results table');
+        console.log('Sending data to results API:', {
+          studentId: user._id,
+          courseId: exam.course._id,
+          classId: user.class._id
+        });
+
+        try {
+          const saveResultRes = await fetch('http://localhost:5000/api/results/calculate', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              studentId: user._id,
+              courseId: exam.course._id,
+              classId: user.class._id
+            })
+          });
+          
+          console.log('Results API response status:', saveResultRes.status);
+          console.log('Results API response headers:', [...saveResultRes.headers.entries()]);
+          
+          if (!saveResultRes.ok) {
+            const errorData = await saveResultRes.json().catch(() => ({}));
+            console.error('Failed to save results:', errorData);
+            console.error('Full response:', saveResultRes);
+            // Don't throw error here as the exam submission was successful
+          } else {
+            const resultData = await saveResultRes.json();
+            console.log('Results saved:', resultData);
+          }
+        } catch (fetchError) {
+          console.error('Network error when saving results:', fetchError);
+        }
+      } else {
+        console.log('Skipping result calculation - missing exam or user data');
+        console.log('Exam data:', exam);
+        console.log('User data:', user);
+        if (exam) {
+          console.log('Exam course data:', exam.course);
+        }
+        if (user) {
+          console.log('User class data:', user.class);
+        }
+      }
+      
       setExamSubmitted(true);
       
       // Set submission result based on submission type
@@ -280,6 +448,15 @@ const StudentExamPage = ({ user }) => {
       } else {
         console.log('Setting submission result to success');
         setSubmissionResult('success');
+      }
+      
+      // If it's an auto-submit due to time expiration, navigate back to dashboard after a delay
+      if (isAutoSubmit) {
+        console.log('Auto-submit due to time expiration, will navigate to dashboard');
+        setTimeout(() => {
+          console.log('Navigating to dashboard after time expiration');
+          navigate('/student');
+        }, 3000); // Show message for 3 seconds before navigating
       }
     } catch (err) {
       console.error('Error during exam submission:', err);
@@ -404,14 +581,17 @@ const StudentExamPage = ({ user }) => {
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             {submissionResult === 'expired' 
-              ? 'Exam Time Expired' 
+              ? 'Exam Time Ended' 
               : 'Exam Submitted Successfully!'}
           </h2>
           <p className="text-gray-600 mb-6">
             {submissionResult === 'expired' 
-              ? 'The exam time has expired. Your answers have been automatically saved.' 
+              ? 'The exam time has ended. Your answers have been automatically saved for evaluation.' 
               : 'Your exam has been submitted successfully.'}
           </p>
+          {submissionResult === 'expired' && (
+            <p className="text-blue-600 mb-4">Redirecting to dashboard...</p>
+          )}
           <button
             onClick={() => navigate('/student')}
             className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg"

@@ -13,6 +13,7 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [modalError, setModalError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingDepartmentHead, setEditingDepartmentHead] = useState(null);
@@ -64,6 +65,7 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setModalError(null);
     setSuccess(false);
 
     // Check if department already has a head (for new department heads)
@@ -73,7 +75,7 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
       );
       
       if (departmentHasHead) {
-        setError('This department already has a department head. Each department can only have one head.');
+        setModalError('This department already has a department head. Each department can only have one head.');
         setLoading(false);
         return;
       }
@@ -115,10 +117,12 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
         // Refresh the list
         fetchDepartmentHeads();
       } else {
-        setError(data.message || `Failed to ${editingDepartmentHead ? 'update' : 'create'} department head`);
+        // Display validation errors in the modal
+        setModalError(data.message || `Failed to ${editingDepartmentHead ? 'update' : 'create'} department head`);
       }
     } catch (err) {
-      setError(`Error ${editingDepartmentHead ? 'updating' : 'creating'} department head: ` + err.message);
+      // Display network errors in the modal
+      setModalError(`Error ${editingDepartmentHead ? 'updating' : 'creating'} department head: ` + err.message);
     } finally {
       setLoading(false);
     }
@@ -177,6 +181,7 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
   const closeModal = () => {
     setShowModal(false);
     setEditingDepartmentHead(null);
+    setModalError(null);
     setFormData({
       name: '',
       email: '',
@@ -204,76 +209,135 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
   };
 
   return (
-    <div className="add-department-head">
-      <div className="page-header">
-        <h1><FaUserShield /> Department Heads</h1>
-        <button className="btn-primary" onClick={openModal}>
-          <FaPlus /> Add 
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-800 flex items-center">
+          <FaUserShield className="mr-2" /> Department Heads
+        </h1>
+        <button 
+          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 text-sm rounded-md flex items-center justify-center transition-colors mt-2 md:mt-0"
+          onClick={openModal}
+        >
+          <FaPlus className="mr-1.5" size={14} /> Add Department Head
         </button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">Department head {editingDepartmentHead ? 'updated' : 'created'} successfully!</div>}
-
-      <table className="department-heads-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone Number</th>
-            <th>Department</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {departmentHeads.map((head) => (
-            <tr key={head._id}>
-              <td>{head.name}</td>
-              <td>{head.email}</td>
-              <td>{head.phoneNo}</td>
-              <td>{head.department?.name || 'N/A'}</td>
-              <td>
-                <button 
-                  className="btn-icon edit"
-                  onClick={() => handleEdit(head)}
-                  title="Edit"
-                >
-                  <FaEdit />
-                </button>
-                <button 
-                  className="btn-icon delete"
-                  onClick={() => handleDelete(head._id)}
-                  title="Delete"
-                >
-                  <FaTrash />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded" role="alert">
+          <p className="font-bold">Error</p>
+          <p>{error}</p>
+          <button 
+            onClick={() => setError(null)}
+            className="mt-2 text-red-800 hover:text-red-900 font-medium"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       
-      {departmentHeads.length === 0 && (
-        <div className="no-data">
-          No department heads found. Click "Add Department Head" to create one.
+      {success && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded" role="alert">
+          <p className="font-bold">Success</p>
+          <p>Department head {editingDepartmentHead ? 'updated' : 'created'} successfully!</p>
         </div>
       )}
 
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-100">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Name
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Email
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Phone Number
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Department
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {departmentHeads.length > 0 ? (
+                departmentHeads.map((head) => (
+                  <tr key={head._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {head.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {head.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {head.phoneNo}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {head.department?.name || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button 
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                        onClick={() => handleEdit(head)}
+                        title="Edit"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button 
+                        className="text-red-600 hover:text-red-900"
+                        onClick={() => handleDelete(head._id)}
+                        title="Delete"
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-900">
+                    No department heads found. Click "Add Department Head" to create one.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Modal for adding/editing department heads */}
       {showModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editingDepartmentHead ? 'Edit Department Head' : 'Add New Department Head'}</h2>
-              <button className="modal-close" onClick={closeModal}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {editingDepartmentHead ? 'Edit Department Head' : 'Add New Department Head'}
+              </h2>
+              <button 
+                className="text-gray-500 hover:text-gray-700"
+                onClick={closeModal}
+              >
                 <FaTimes />
               </button>
             </div>
+            {modalError && (
+              <div className="mx-6 mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded" role="alert">
+                <p className="font-bold">Error</p>
+                <p>{modalError}</p>
+              </div>
+            )}
             
-            <form onSubmit={handleSubmit} className="department-head-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="name">Full Name *</label>
+            <form onSubmit={handleSubmit} className="px-6 py-4">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Full Name *
+                  </label>
                   <input
                     type="text"
                     id="name"
@@ -281,13 +345,15 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="form-input"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter full name"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="email">Email Address *</label>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address *
+                  </label>
                   <input
                     type="email"
                     id="email"
@@ -295,15 +361,15 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="form-input"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter email address"
                   />
                 </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="phoneNo">Phone Number *</label>
+                <div>
+                  <label htmlFor="phoneNo" className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number *
+                  </label>
                   <input
                     type="text"
                     id="phoneNo"
@@ -311,16 +377,16 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
                     value={formData.phoneNo}
                     onChange={handleChange}
                     required
-                    className="form-input"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter phone number"
                   />
                 </div>
 
-                <div className="form-group password-group">
-                  <label htmlFor="password">
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                     {editingDepartmentHead ? 'New Password' : 'Password'} {editingDepartmentHead ? '' : '*'}
                   </label>
-                  <div className="password-input-container">
+                  <div className="relative">
                     <input
                       type={editingDepartmentHead ? (showNewPassword ? "text" : "password") : (showPassword ? "text" : "password")}
                       id="password"
@@ -329,30 +395,30 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
                       onChange={handleChange}
                       required={!editingDepartmentHead}
                       minLength="6"
-                      className="form-input password-input"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 pr-10"
                       placeholder={editingDepartmentHead ? "Enter new password (leave blank to keep current)" : "Enter password (min 6 characters)"}
                     />
                     <button
                       type="button"
-                      className="password-toggle"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                       onClick={() => editingDepartmentHead ? setShowNewPassword(!showNewPassword) : setShowPassword(!showPassword)}
                     >
                       {editingDepartmentHead ? (showNewPassword ? <FaEyeSlash /> : <FaEye />) : (showPassword ? <FaEyeSlash /> : <FaEye />)}
                     </button>
                   </div>
                 </div>
-              </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="department">Department *</label>
+                <div>
+                  <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
+                    Department *
+                  </label>
                   <select
                     id="department"
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
                     required
-                    className="form-input"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select a department</option>
                     {getAvailableDepartments().map((dept) => (
@@ -364,18 +430,18 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
                 </div>
               </div>
 
-              <div className="form-actions">
+              <div className="mt-6 flex justify-end space-x-3">
                 <button 
                   type="button" 
                   onClick={closeModal}
-                  className="btn-secondary"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className="btn-primary"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   {loading ? 'Saving...' : (editingDepartmentHead ? 'Update Department Head' : 'Create Department Head')}
                 </button>

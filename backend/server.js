@@ -52,99 +52,153 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:5175'
-    ],
-    methods: ['GET', 'POST'],
-    credentials: true
+    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+    methods: ["GET", "POST"]
   }
 });
 
-// Store connected clients
-const connectedClients = new Map();
+// Store connected students
+const connectedStudents = new Map();
+
+// Helper function to calculate student exam score
+const calculateStudentExamScore = async (studentExamId) => {
+  try {
+    // Import models
+    const StudentExam = (await import('./StudentExam.js')).default;
+    const Answer = (await import('./Answer.js')).default;
+    const Question = (await import('./Question.js')).default;
+    
+    // Get the student exam
+    const studentExam = await StudentExam.findById(studentExamId).populate('exam');
+    if (!studentExam) {
+      throw new Error('Student exam not found');
+    }
+    
+    // Get all answers for this student exam
+    const answers = await Answer.find({ studentExam: studentExamId }).populate('question');
+    
+    if (answers.length === 0) {
+      return 0;
+    }
+    
+    // Get all questions for this exam
+    const questions = await Question.find({ exam: studentExam.exam._id });
+    
+    // Calculate score
+    let correctAnswers = 0;
+    answers.forEach(answer => {
+      const question = questions.find(q => q._id.toString() === answer.question._id.toString());
+      if (question && answer.selectedOption === question.correctOption) {
+        correctAnswers++;
+      }
+    });
+    
+    // Calculate percentage score (assuming all questions have equal weight)
+    const score = (correctAnswers / questions.length) * 100;
+    
+    // Update student exam with calculated score
+    studentExam.score = score;
+    await studentExam.save();
+    
+    console.log(`Calculated score for student exam ${studentExamId}: ${score}%`);
+    return score;
+  } catch (error) {
+    console.error('Error calculating student exam score:', error);
+    throw error;
+  }
+};
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
-
+  console.log('User connected:', socket.id);
+  
   // Handle student connection
   socket.on('student-connect', (studentId) => {
     console.log('Student connected:', studentId);
-    connectedClients.set(studentId, socket.id);
+    connectedStudents.set(socket.id, studentId);
+    
+    // Join a room for this student
+    socket.join(`student-${studentId}`);
   });
-
+  
   // Handle teacher connection
   socket.on('teacher-connect', (teacherId) => {
     console.log('Teacher connected:', teacherId);
-    connectedClients.set(teacherId, socket.id);
+    socket.join(`teacher-${teacherId}`);
   });
-
-  // Handle answer saving
+  
+  // Handle save answer event
   socket.on('save-answer', async (data) => {
     try {
-      console.log('Saving answer:', data);
+      console.log('Save answer event received:', data);
       
-      // Import Answer model
-      const Answer = (await import('./Answer.js')).default;
+      const { studentId, examId, questionId, selectedOption } = data;
       
-      // Save or update the answer
-      const existingAnswer = await Answer.findOne({
-        student: data.studentId,
-        exam: data.examId,
-        question: data.questionId
-      });
-      
-      if (existingAnswer) {
-        existingAnswer.selectedOption = data.selectedOption;
-        await existingAnswer.save();
-      } else {
-        const answer = new Answer({
-          student: data.studentId,
-          exam: data.examId,
-          question: data.questionId,
-          selectedOption: data.selectedOption
+      // Validate required fields
+      if (!studentId || !examId || !questionId || !selectedOption) {
+        socket.emit('answer-save-error', {
+          error: 'Missing required fields: studentId, examId, questionId, and selectedOption are required'
         });
-        await answer.save();
+        return;
       }
       
-      // Emit confirmation back to the student
+      // Import models
+      const StudentExam = (await import('./StudentExam.js')).default;
+      const Answer = (await import('./Answer.js')).default;
+      const Question = (await import('./Question.js')).default;
+      
+      // Check if student exam exists
+      let studentExam = await StudentExam.findOne({ student: studentId, exam: examId });
+      
+      // If student exam doesn't exist, create it
+      if (!studentExam) {
+        studentExam = new StudentExam({
+          student: studentId,
+          exam: examId,
+          startedAt: new Date()
+        });
+        await studentExam.save();
+        console.log('Created new student exam record:', studentExam._id);
+      }
+      
+      // Check if answer already exists
+      let answer = await Answer.findOne({ studentExam: studentExam._id, question: questionId });
+      
+      if (answer) {
+        // Update existing answer
+        answer.selectedOption = selectedOption;
+        await answer.save();
+        console.log('Updated existing answer:', answer._id);
+      } else {
+        // Create new answer
+        answer = new Answer({
+          studentExam: studentExam._id,
+          question: questionId,
+          selectedOption
+        });
+        await answer.save();
+        console.log('Created new answer:', answer._id);
+      }
+      
+      // Emit success event
       socket.emit('answer-saved', {
-        questionId: data.questionId,
-        message: 'Answer saved successfully'
+        questionId: questionId,
+        answerId: answer._id
       });
+      
+      console.log('Answer saved successfully');
     } catch (error) {
       console.error('Error saving answer:', error);
       socket.emit('answer-save-error', {
-        questionId: data.questionId,
-        error: error.message
+        error: error.message || 'Failed to save answer'
       });
     }
   });
-
-  // Handle exam timer updates
-  socket.on('exam-timer-update', (data) => {
-    // Broadcast to all clients in the exam room
-    socket.broadcast.emit('exam-timer-update', data);
-  });
-
-  // Handle exam ended notification
-  socket.on('exam-ended', (examId) => {
-    // Broadcast to all clients that the exam has ended
-    socket.broadcast.emit('exam-ended', examId);
-  });
-
-  // Handle disconnect
+  
+  // Handle disconnection
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
-    // Remove client from connected clients map
-    for (let [key, value] of connectedClients.entries()) {
-      if (value === socket.id) {
-        connectedClients.delete(key);
-        break;
-      }
-    }
+    connectedStudents.delete(socket.id);
   });
 });
 
@@ -277,6 +331,9 @@ import questionRoutes from './routes/question.routes.js';
 import assignmentRoutes from './routes/assignment.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import addStudentRoutes from './routes/addStudent.routes.js';
+import resultRoutes from './routes/result.routes.js';
+import studentExamRoutes from './routes/studentExam.routes.js';
+import answerRoutes from './routes/answer.routes.js';
 
 app.get("/", (req, res) => {
   res.send("Backend is running...");
@@ -296,12 +353,67 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/add-students', addStudentRoutes);
+app.use('/api/results', resultRoutes);
+app.use('/api/student-exams', studentExamRoutes);
+app.use('/api/answers', answerRoutes);
 
 // Add backward compatibility for login endpoint
 app.post('/api/login', (req, res) => {
   // Forward the request to the new auth login endpoint
   res.redirect(307, '/api/auth/login');
 });
+
+// Function to check for exams that should become available
+const checkExamAvailability = async () => {
+  try {
+    // Import Exam model
+    const Exam = (await import('./Exam.js')).default;
+    const now = new Date();
+    
+    // Find exams that start within the next minute
+    const oneMinuteFromNow = new Date(now.getTime() + 60000);
+    
+    const upcomingExams = await Exam.find({
+      startTime: { $gte: now, $lte: oneMinuteFromNow }
+    }).populate('course', 'subject');
+    
+    // Notify connected students about upcoming exams
+    for (const exam of upcomingExams) {
+      console.log(`Notifying about upcoming exam: ${exam.title}`);
+      // In a real implementation, you would send notifications to specific students
+      // based on their courses/registrations
+      io.emit('exam-upcoming', {
+        examId: exam._id,
+        title: exam.title,
+        course: exam.course?.subject,
+        startTime: exam.startTime
+      });
+    }
+    
+    // Find exams that are currently active
+    const activeExams = await Exam.find({
+      startTime: { $lte: now },
+      $expr: { $gt: [{ $add: ["$startTime", { $multiply: ["$duration", 60000] }] }, now] }
+    }).populate('course', 'subject');
+    
+    // Notify about active exams
+    for (const exam of activeExams) {
+      console.log(`Notifying about active exam: ${exam.title}`);
+      io.emit('exam-active', {
+        examId: exam._id,
+        title: exam.title,
+        course: exam.course?.subject,
+        startTime: exam.startTime,
+        duration: exam.duration
+      });
+    }
+  } catch (error) {
+    console.error('Error checking exam availability:', error);
+  }
+};
+
+// Run exam availability check every 3 seconds
+setInterval(checkExamAvailability, 3000);
 
 // Helper function to get user data from token payload
 const getUserFromToken = async (tokenPayload) => {
