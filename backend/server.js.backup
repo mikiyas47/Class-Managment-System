@@ -1,0 +1,1940 @@
+import express from "express";
+import cors from "cors";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import bcrypt from 'bcryptjs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import multer from 'multer';
+import csv from 'csv-parser';
+import { Readable } from 'stream';
+import jwt from 'jsonwebtoken';
+import fs from 'fs';
+import path from 'path';
+
+// JWT Configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: 'No token provided', status: 'error' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid or expired token', status: 'error' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Get the directory name for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables with explicit path
+dotenv.config({ path: __dirname + '/.env' });
+
+// Debug: Log the MONGO_URI to see if it's loaded
+console.log("MONGO_URI from .env:", process.env.MONGO_URI);
+console.log("__dirname:", __dirname);
+
+const app = express();
+
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175'
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
+app.use(express.json());
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'), false);
+    }
+  }
+});
+
+// Configure multer for assignment file uploads
+const assignmentUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadPath = 'uploads/assignments/';
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+      // Generate unique filename
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  }),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common document types
+    if (
+      file.mimetype === 'application/pdf' ||
+      file.mimetype === 'application/msword' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.mimetype === 'application/vnd.ms-powerpoint' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+      file.mimetype === 'application/vnd.ms-excel' ||
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype.startsWith('text/')
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF, Word, PowerPoint, Excel, and text files are allowed'), false);
+    }
+  }
+});
+
+// Connect to MongoDB with better error handling
+const connectDB = async () => {
+  try {
+    if (!process.env.MONGO_URI) {
+      throw new Error("MONGO_URI is not defined in environment variables");
+    }
+    
+    console.log("Attempting to connect to MongoDB with URI:", process.env.MONGO_URI);
+    
+    // Add connection options for better debugging
+    const options = {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+    };
+    
+    await mongoose.connect(process.env.MONGO_URI, options);
+    console.log("✅ MongoDB connected successfully");
+    
+    // Add connection event listeners
+    mongoose.connection.on('error', err => {
+      console.error('MongoDB connection error:', err);
+    });
+    
+    mongoose.connection.on('disconnected', () => {
+      console.log('MongoDB disconnected');
+    });
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err);
+    process.exit(1);
+  }
+};
+
+connectDB();
+
+// Import models
+import Admin from "./Admin.js";
+import Department from "./Department.js";
+import DepartmentHead from "./DepartmentHead.js";
+import Class from "./Class.js";
+import Teacher from "./Teacher.js";
+import Course from "./Course.js";
+import Student from "./Student.js";
+import Announcement from "./Announcement.js";
+import Exam from "./Exam.js";
+import Question from "./Question.js";
+import Assignment from "./Assignment.js";
+
+app.get("/", (req, res) => {
+  res.send("Backend is running...");
+});
+
+// Unified login endpoint that identifies user type and redirects accordingly
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Try to find the user in each collection
+    let user = null;
+    let userType = null;
+    
+    // Check if it's an admin
+    user = await Admin.findOne({ email });
+    if (user) {
+      const isMatch = await user.comparePassword(password);
+      if (isMatch) {
+        userType = 'admin';
+      } else {
+        user = null; // Invalid password
+      }
+    }
+    
+    // Check if it's a department head
+    if (!user) {
+      user = await DepartmentHead.findOne({ email }).populate('department');
+      if (user) {
+        const isMatch = await user.comparePassword(password);
+        if (isMatch) {
+          userType = 'departmentHead';
+        } else {
+          user = null; // Invalid password
+        }
+      }
+    }
+    
+    // Check if it's a teacher
+    if (!user) {
+      user = await Teacher.findOne({ email });
+      if (user) {
+        const isMatch = await user.comparePassword(password);
+        if (isMatch) {
+          userType = 'teacher';
+        } else {
+          user = null; // Invalid password
+        }
+      }
+    }
+    
+    // Check if it's a student
+    if (!user) {
+      user = await Student.findOne({ email }).populate('department').populate('class');
+      if (user) {
+        const isMatch = await user.comparePassword(password);
+        if (isMatch) {
+          userType = 'student';
+        } else {
+          user = null; // Invalid password
+        }
+      }
+    }
+    
+    // If no user found or invalid password
+    if (!user) {
+      return res.status(401).json({
+        message: 'Invalid credentials',
+        status: 'error'
+      });
+    }
+    
+    // Generate JWT token with user type
+    const token = jwt.sign(
+      { 
+        id: user._id, 
+        email: user.email, 
+        role: userType 
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    // Return user data and type for frontend redirection
+    res.json({
+      message: 'Login successful',
+      data: {
+        token,
+        user: user.toJSON(),
+        userType
+      },
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      message: 'Error during login',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Assignment management endpoints
+
+// Create a new assignment with file upload (temporarily removed authentication for testing)
+app.post('/api/assignments', assignmentUpload.single('assignmentFile'), async (req, res) => {
+  try {
+    // For multipart/form-data, we need to get fields from req.body
+    const { class: classId, teacher } = req.body;
+    
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        message: 'Assignment file is required',
+        status: 'error'
+      });
+    }
+    
+    // Create new assignment
+    const assignment = new Assignment({
+      class: classId,
+      teacher,
+      filename: req.file.filename,
+      path: req.file.path,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size
+    });
+    
+    await assignment.save();
+    
+    // Populate the response with referenced data
+    const savedAssignment = await Assignment.findById(assignment._id)
+      .populate('class', 'year semester')
+      .populate('teacher', 'name email');
+    
+    res.status(201).json({
+      message: 'Assignment created successfully',
+      data: savedAssignment,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error creating assignment:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'An assignment with this class, teacher, and filename already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error creating assignment',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Get all assignments with optional filters (temporarily removed authentication for testing)
+app.get('/api/assignments', async (req, res) => {
+  try {
+    const { class: classId, teacher } = req.query;
+    const query = {};
+    
+    if (classId) query.class = classId;
+    if (teacher) query.teacher = teacher;
+    
+    // Populate the referenced fields for better frontend display
+    const assignments = await Assignment.find(query)
+      .populate('class', 'year semester')
+      .populate('teacher', 'name email')
+      .sort({ createdAt: -1 });
+      
+    res.json({
+      message: 'Assignments retrieved successfully',
+      data: assignments,
+      count: assignments.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching assignments:', error);
+    res.status(500).json({
+      message: 'Error retrieving assignments',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Get a specific assignment by ID (temporarily removed authentication for testing)
+app.get('/api/assignments/:id', async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id)
+      .populate('class', 'year semester')
+      .populate('teacher', 'name email');
+    
+    if (!assignment) {
+      return res.status(404).json({
+        message: 'Assignment not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Assignment retrieved successfully',
+      data: assignment,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error retrieving assignment:', error);
+    res.status(500).json({
+      message: 'Error retrieving assignment',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update an assignment by ID (without file upload) (temporarily removed authentication for testing)
+app.put('/api/assignments/:id', async (req, res) => {
+  try {
+    const { class: classId, teacher } = req.body;
+    
+    const assignment = await Assignment.findByIdAndUpdate(
+      req.params.id,
+      { class: classId, teacher },
+      { new: true, runValidators: true }
+    ).populate('class', 'year semester').populate('teacher', 'name email');
+    
+    if (!assignment) {
+      return res.status(404).json({
+        message: 'Assignment not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Assignment updated successfully',
+      data: assignment,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating assignment:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'An assignment with this class, teacher, and filename already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error updating assignment',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Delete an assignment by ID (temporarily removed authentication for testing)
+app.delete('/api/assignments/:id', async (req, res) => {
+  try {
+    const assignment = await Assignment.findByIdAndDelete(req.params.id);
+    
+    if (!assignment) {
+      return res.status(404).json({
+        message: 'Assignment not found',
+        status: 'error'
+      });
+    }
+    
+    // Delete the file from the filesystem
+    try {
+      if (fs.existsSync(assignment.path)) {
+        fs.unlinkSync(assignment.path);
+      }
+    } catch (fileError) {
+      console.error('Error deleting assignment file:', fileError);
+    }
+    
+    res.json({
+      message: 'Assignment deleted successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error deleting assignment:', error);
+    res.status(500).json({
+      message: 'Error deleting assignment',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Download an assignment file (temporarily removed authentication for testing)
+app.get('/api/assignments/:id/download', async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id);
+    
+    if (!assignment) {
+      return res.status(404).json({
+        message: 'Assignment not found',
+        status: 'error'
+      });
+    }
+    
+    // Check if file exists
+    if (!fs.existsSync(assignment.path)) {
+      return res.status(404).json({
+        message: 'Assignment file not found',
+        status: 'error'
+      });
+    }
+    
+    // Set headers for file download
+    res.setHeader('Content-Disposition', `attachment; filename="${assignment.originalName}"`);
+    res.setHeader('Content-Type', assignment.mimeType);
+    
+    // Stream the file
+    const fileStream = fs.createReadStream(assignment.path);
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error('Error downloading assignment:', error);
+    res.status(500).json({
+      message: 'Error downloading assignment',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Teacher management endpoints
+app.get('/api/teachers', async (req, res) => {
+  try {
+    const teachers = await Teacher.find().sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Teachers retrieved successfully',
+      data: teachers,
+      count: teachers.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching teachers:', error);
+    res.status(500).json({
+      message: 'Error retrieving teachers',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Create new teacher
+app.post('/api/teachers', authenticateToken, async (req, res) => {
+  try {
+    const { userId, name, email, phoneNumber, password } = req.body;
+    
+    // Validate required fields
+    if (!userId || !name || !email || !phoneNumber || !password) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Check if teacher with this userId or email already exists
+    const existingTeacher = await Teacher.findOne({
+      $or: [{ userId }, { email }]
+    });
+    
+    if (existingTeacher) {
+      return res.status(400).json({
+        message: 'Teacher with this User ID or Email already exists',
+        status: 'error'
+      });
+    }
+    
+    // Create new teacher
+    const teacher = new Teacher({
+      userId,
+      name,
+      email,
+      phoneNumber,
+      password
+    });
+    
+    await teacher.save();
+    
+    res.status(201).json({
+      message: 'Teacher created successfully',
+      data: teacher,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error creating teacher:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Teacher with this User ID or Email already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error creating teacher',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update teacher by ID
+app.put('/api/teachers/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, name, email, phoneNumber, password } = req.body;
+    
+    // Validate required fields (except password which is optional for updates)
+    if (!userId || !name || !email || !phoneNumber) {
+      return res.status(400).json({
+        message: 'User ID, Name, Email, and Phone Number are required',
+        status: 'error'
+      });
+    }
+    
+    // Check if another teacher with this userId or email already exists
+    const existingTeacher = await Teacher.findOne({
+      $or: [{ userId }, { email }],
+      _id: { $ne: id }
+    });
+    
+    if (existingTeacher) {
+      return res.status(400).json({
+        message: 'Teacher with this User ID or Email already exists',
+        status: 'error'
+      });
+    }
+    
+    // Prepare update object
+    const updateData = {
+      userId,
+      name,
+      email,
+      phoneNumber
+    };
+    
+    // Only update password if provided
+    if (password) {
+      updateData.password = password;
+    }
+    
+    const teacher = await Teacher.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!teacher) {
+      return res.status(404).json({
+        message: 'Teacher not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Teacher updated successfully',
+      data: teacher,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating teacher:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Teacher with this User ID or Email already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error updating teacher',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Delete teacher by ID
+app.delete('/api/teachers/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const teacher = await Teacher.findByIdAndDelete(id);
+    
+    if (!teacher) {
+      return res.status(404).json({
+        message: 'Teacher not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Teacher deleted successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error deleting teacher:', error);
+    res.status(500).json({
+      message: 'Error deleting teacher',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Student management endpoints
+app.get('/api/students', async (req, res) => {
+  try {
+    const students = await Student.find().populate('department').populate('class').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Students retrieved successfully',
+      data: students,
+      count: students.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500).json({
+      message: 'Error retrieving students',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Get students by class ID
+app.get('/api/students/class/:classId', async (req, res) => {
+  try {
+    const { classId } = req.params;
+    
+    const students = await Student.find({ class: classId })
+      .populate('department')
+      .populate('class')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Students retrieved successfully',
+      data: students,
+      count: students.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching students by class:', error);
+    res.status(500).json({
+      message: 'Error retrieving students',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Create new student
+app.post('/api/students', authenticateToken, async (req, res) => {
+  try {
+    const { name, userId, email, password, phoneNo, department, class: classId } = req.body;
+    
+    // Validate required fields
+    if (!name || !userId || !email || !password || !phoneNo || !department || !classId) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Check if student with this userId or email already exists
+    const existingStudent = await Student.findOne({
+      $or: [{ userId }, { email }]
+    });
+    
+    if (existingStudent) {
+      return res.status(400).json({
+        message: 'Student with this User ID or Email already exists',
+        status: 'error'
+      });
+    }
+    
+    // Create new student
+    const student = new Student({
+      name,
+      userId,
+      email,
+      password,
+      phoneNo,
+      department,
+      class: classId
+    });
+    
+    await student.save();
+    
+    // Populate the response with referenced data
+    const savedStudent = await Student.findById(student._id)
+      .populate('department')
+      .populate('class');
+    
+    res.status(201).json({
+      message: 'Student created successfully',
+      data: savedStudent,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error creating student:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Student with this User ID or Email already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error creating student',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update student by ID
+app.put('/api/students/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, userId, email, password, phoneNo, department, class: classId } = req.body;
+    
+    // Validate required fields (except password which is optional for updates)
+    if (!name || !userId || !email || !phoneNo || !department || !classId) {
+      return res.status(400).json({
+        message: 'All fields except password are required',
+        status: 'error'
+      });
+    }
+    
+    // Check if another student with this userId or email already exists
+    const existingStudent = await Student.findOne({
+      $or: [{ userId }, { email }],
+      _id: { $ne: id }
+    });
+    
+    if (existingStudent) {
+      return res.status(400).json({
+        message: 'Student with this User ID or Email already exists',
+        status: 'error'
+      });
+    }
+    
+    // Prepare update object
+    const updateData = {
+      name,
+      userId,
+      email,
+      phoneNo,
+      department,
+      class: classId
+    };
+    
+    // Only update password if provided
+    if (password) {
+      updateData.password = password;
+    }
+    
+    const student = await Student.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('department').populate('class');
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Student updated successfully',
+      data: student,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating student:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Student with this User ID or Email already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error updating student',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Delete student by ID
+app.delete('/api/students/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await Student.findByIdAndDelete(id);
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Student deleted successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error deleting student:', error);
+    res.status(500).json({
+      message: 'Error deleting student',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Course management endpoints
+app.get('/api/courses', async (req, res) => {
+  try {
+    const courses = await Course.find().populate('teacher').populate('department').populate('class').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Courses retrieved successfully',
+      data: courses,
+      count: courses.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    res.status(500).json({
+      message: 'Error retrieving courses',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Create new course
+app.post('/api/courses', authenticateToken, async (req, res) => {
+  try {
+    const { subject, code, crh, department, teacher, class: classId } = req.body;
+    
+    // Validate required fields
+    if (!subject || !code || !crh || !department || !teacher || !classId) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Check if course with this code already exists
+    const existingCourse = await Course.findOne({ code });
+    
+    if (existingCourse) {
+      return res.status(400).json({
+        message: 'Course with this code already exists',
+        status: 'error'
+      });
+    }
+    
+    // Create new course
+    const course = new Course({
+      subject,
+      code,
+      crh: parseInt(crh),
+      department,
+      teacher,
+      class: classId
+    });
+    
+    await course.save();
+    
+    // Populate the response with referenced data
+    const savedCourse = await Course.findById(course._id)
+      .populate('teacher')
+      .populate('department')
+      .populate('class');
+    
+    res.status(201).json({
+      message: 'Course created successfully',
+      data: savedCourse,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error creating course:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Course with this code already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error creating course',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update course by ID
+app.put('/api/courses/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, code, crh, department, teacher, class: classId } = req.body;
+    
+    // Validate required fields
+    if (!subject || !code || !crh || !department || !teacher || !classId) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Check if another course with this code already exists
+    const existingCourse = await Course.findOne({
+      code,
+      _id: { $ne: id }
+    });
+    
+    if (existingCourse) {
+      return res.status(400).json({
+        message: 'Course with this code already exists',
+        status: 'error'
+      });
+    }
+    
+    const course = await Course.findByIdAndUpdate(
+      id,
+      {
+        subject,
+        code,
+        crh: parseInt(crh),
+        department,
+        teacher,
+        class: classId
+      },
+      { new: true, runValidators: true }
+    ).populate('teacher').populate('department').populate('class');
+    
+    if (!course) {
+      return res.status(404).json({
+        message: 'Course not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Course updated successfully',
+      data: course,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating course:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Course with this code already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error updating course',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Delete course by ID
+app.delete('/api/courses/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findByIdAndDelete(id);
+    
+    if (!course) {
+      return res.status(404).json({
+        message: 'Course not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Course deleted successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error deleting course:', error);
+    res.status(500).json({
+      message: 'Error deleting course',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Class management endpoints
+app.get('/api/classes', async (req, res) => {
+  try {
+    const classes = await Class.find().populate('department').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Classes retrieved successfully',
+      data: classes,
+      count: classes.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching classes:', error);
+    res.status(500).json({
+      message: 'Error retrieving classes',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Create new class
+app.post('/api/classes', authenticateToken, async (req, res) => {
+  try {
+    const { department, year, semester } = req.body;
+    
+    // Validate required fields
+    if (!department || !year || !semester) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate year range
+    if (year < 1 || year > 4) {
+      return res.status(400).json({
+        message: 'Year must be between 1 and 4',
+        status: 'error'
+      });
+    }
+    
+    // Validate semester
+    if (!['first', 'second'].includes(semester)) {
+      return res.status(400).json({
+        message: 'Semester must be either "first" or "second"',
+        status: 'error'
+      });
+    }
+    
+    // Check if class with this department, year, and semester already exists
+    const existingClass = await Class.findOne({ department, year, semester });
+    
+    if (existingClass) {
+      return res.status(400).json({
+        message: 'A class with this department, year, and semester already exists',
+        status: 'error'
+      });
+    }
+    
+    // Create new class
+    const classItem = new Class({
+      department,
+      year: parseInt(year),
+      semester
+    });
+    
+    await classItem.save();
+    
+    // Populate the response with referenced data
+    const savedClass = await Class.findById(classItem._id).populate('department');
+    
+    res.status(201).json({
+      message: 'Class created successfully',
+      data: savedClass,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error creating class:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'A class with this department, year, and semester already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error creating class',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update class by ID
+app.put('/api/classes/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { department, year, semester } = req.body;
+    
+    // Validate required fields
+    if (!department || !year || !semester) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate year range
+    if (year < 1 || year > 4) {
+      return res.status(400).json({
+        message: 'Year must be between 1 and 4',
+        status: 'error'
+      });
+    }
+    
+    // Validate semester
+    if (!['first', 'second'].includes(semester)) {
+      return res.status(400).json({
+        message: 'Semester must be either "first" or "second"',
+        status: 'error'
+      });
+    }
+    
+    // Check if another class with this department, year, and semester already exists
+    const existingClass = await Class.findOne({
+      department,
+      year,
+      semester,
+      _id: { $ne: id }
+    });
+    
+    if (existingClass) {
+      return res.status(400).json({
+        message: 'A class with this department, year, and semester already exists',
+        status: 'error'
+      });
+    }
+    
+    const classItem = await Class.findByIdAndUpdate(
+      id,
+      {
+        department,
+        year: parseInt(year),
+        semester
+      },
+      { new: true, runValidators: true }
+    ).populate('department');
+    
+    if (!classItem) {
+      return res.status(404).json({
+        message: 'Class not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Class updated successfully',
+      data: classItem,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating class:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'A class with this department, year, and semester already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error updating class',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Delete class by ID
+app.delete('/api/classes/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const classItem = await Class.findByIdAndDelete(id);
+    
+    if (!classItem) {
+      return res.status(404).json({
+        message: 'Class not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Class deleted successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error deleting class:', error);
+    res.status(500).json({
+      message: 'Error deleting class',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Department management endpoints
+app.get('/api/departments', async (req, res) => {
+  try {
+    const departments = await Department.find().sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Departments retrieved successfully',
+      data: departments,
+      count: departments.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching departments:', error);
+    res.status(500).json({
+      message: 'Error retrieving departments',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Announcement management endpoints
+app.get('/api/announcements', async (req, res) => {
+  try {
+    const announcements = await Announcement.find().populate('class').populate('teacher').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Announcements retrieved successfully',
+      data: announcements,
+      count: announcements.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching announcements:', error);
+    res.status(500).json({
+      message: 'Error retrieving announcements',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Create new announcement
+app.post('/api/announcements', authenticateToken, async (req, res) => {
+  try {
+    const { class: classId, teacher, title, message } = req.body;
+    
+    // Validate required fields
+    if (!classId || !teacher || !title || !message) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Create new announcement
+    const announcement = new Announcement({
+      class: classId,
+      teacher,
+      title,
+      message
+    });
+    
+    await announcement.save();
+    
+    // Populate the response with referenced data
+    const savedAnnouncement = await Announcement.findById(announcement._id)
+      .populate('class', 'year semester')
+      .populate('teacher', 'name email');
+    
+    res.status(201).json({
+      message: 'Announcement created successfully',
+      data: savedAnnouncement,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error creating announcement:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'An announcement with this title already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error creating announcement',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update announcement by ID
+app.put('/api/announcements/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { class: classId, teacher, title, message } = req.body;
+    
+    // Validate required fields
+    if (!classId || !teacher || !title || !message) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    const announcement = await Announcement.findByIdAndUpdate(
+      id,
+      {
+        class: classId,
+        teacher,
+        title,
+        message
+      },
+      { new: true, runValidators: true }
+    ).populate('class', 'year semester').populate('teacher', 'name email');
+    
+    if (!announcement) {
+      return res.status(404).json({
+        message: 'Announcement not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Announcement updated successfully',
+      data: announcement,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating announcement:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'An announcement with this title already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error updating announcement',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Delete announcement by ID
+app.delete('/api/announcements/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const announcement = await Announcement.findByIdAndDelete(id);
+    
+    if (!announcement) {
+      return res.status(404).json({
+        message: 'Announcement not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Announcement deleted successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error deleting announcement:', error);
+    res.status(500).json({
+      message: 'Error deleting announcement',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Teacher courses endpoint
+app.get('/api/teachers/:id/courses', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const courses = await Course.find({ teacher: id }).populate('department').populate('class').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Courses retrieved successfully',
+      data: courses,
+      count: courses.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching teacher courses:', error);
+    res.status(500).json({
+      message: 'Error retrieving courses',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Question management endpoints
+app.get('/api/questions', async (req, res) => {
+  try {
+    const questions = await Question.find().populate('exam').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Questions retrieved successfully',
+      data: questions,
+      count: questions.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching questions:', error);
+    res.status(500).json({
+      message: 'Error retrieving questions',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Create new question
+app.post('/api/questions', authenticateToken, async (req, res) => {
+  try {
+    const { exam, questionText, optionA, optionB, optionC, optionD, correctOption } = req.body;
+    
+    // Validate required fields
+    if (!exam || !questionText || !optionA || !optionB || !optionC || !optionD || !correctOption) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate correctOption is one of A, B, C, D
+    if (!['A', 'B', 'C', 'D'].includes(correctOption)) {
+      return res.status(400).json({
+        message: 'Correct option must be one of A, B, C, D',
+        status: 'error'
+      });
+    }
+    
+    // Create new question
+    const question = new Question({
+      exam,
+      questionText,
+      optionA,
+      optionB,
+      optionC,
+      optionD,
+      correctOption
+    });
+    
+    await question.save();
+    
+    // Populate the response with referenced data
+    const savedQuestion = await Question.findById(question._id).populate('exam');
+    
+    res.status(201).json({
+      message: 'Question created successfully',
+      data: savedQuestion,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error creating question:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'A question with this text already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error creating question',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update question by ID
+app.put('/api/questions/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { exam, questionText, optionA, optionB, optionC, optionD, correctOption } = req.body;
+    
+    // Validate required fields
+    if (!exam || !questionText || !optionA || !optionB || !optionC || !optionD || !correctOption) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate correctOption is one of A, B, C, D
+    if (!['A', 'B', 'C', 'D'].includes(correctOption)) {
+      return res.status(400).json({
+        message: 'Correct option must be one of A, B, C, D',
+        status: 'error'
+      });
+    }
+    
+    const question = await Question.findByIdAndUpdate(
+      id,
+      {
+        exam,
+        questionText,
+        optionA,
+        optionB,
+        optionC,
+        optionD,
+        correctOption
+      },
+      { new: true, runValidators: true }
+    ).populate('exam');
+    
+    if (!question) {
+      return res.status(404).json({
+        message: 'Question not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Question updated successfully',
+      data: question,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating question:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'A question with this text already exists',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error updating question',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Delete question by ID
+app.delete('/api/questions/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const question = await Question.findByIdAndDelete(id);
+    
+    if (!question) {
+      return res.status(404).json({
+        message: 'Question not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Question deleted successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error deleting question:', error);
+    res.status(500).json({
+      message: 'Error deleting question',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Exam management endpoints
+app.get('/api/exams', async (req, res) => {
+  try {
+    // Support filtering by teacher
+    const { teacher } = req.query;
+    const query = teacher ? { teacher } : {};
+    
+    const exams = await Exam.find(query).populate('class').populate('teacher').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Exams retrieved successfully',
+      data: exams,
+      count: exams.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching exams:', error);
+    res.status(500).json({
+      message: 'Error retrieving exams',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Create new exam
+app.post('/api/exams', async (req, res) => {
+  try {
+    const { class: classId, teacher, title, duration, startTime } = req.body;
+    
+    // Validate required fields
+    if (!classId || !teacher || !title || !duration || !startTime) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Create new exam
+    const exam = new Exam({
+      class: classId,
+      teacher,
+      title,
+      duration: parseInt(duration),
+      startTime
+    });
+    
+    await exam.save();
+    
+    // Populate the response with referenced data
+    const savedExam = await Exam.findById(exam._id)
+      .populate('class', 'year semester')
+      .populate('teacher', 'name email');
+    
+    res.status(201).json({
+      message: 'Exam created successfully',
+      data: savedExam,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error creating exam:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'An exam with this title already exists for this class',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error creating exam',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update exam by ID
+app.put('/api/exams/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { class: classId, teacher, title, duration, startTime } = req.body;
+    
+    // Validate required fields
+    if (!classId || !teacher || !title || !duration || !startTime) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    const exam = await Exam.findByIdAndUpdate(
+      id,
+      {
+        class: classId,
+        teacher,
+        title,
+        duration: parseInt(duration),
+        startTime
+      },
+      { new: true, runValidators: true }
+    ).populate('class', 'year semester').populate('teacher', 'name email');
+    
+    if (!exam) {
+      return res.status(404).json({
+        message: 'Exam not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Exam updated successfully',
+      data: exam,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating exam:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'An exam with this title already exists for this class',
+        status: 'error'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Error updating exam',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Delete exam by ID
+app.delete('/api/exams/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const exam = await Exam.findByIdAndDelete(id);
+    
+    if (!exam) {
+      return res.status(404).json({
+        message: 'Exam not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Exam deleted successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error deleting exam:', error);
+    res.status(500).json({
+      message: 'Error deleting exam',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Class by ID endpoint
+app.get('/api/classes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const classItem = await Class.findById(id).populate('department');
+    
+    if (!classItem) {
+      return res.status(404).json({
+        message: 'Class not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Class retrieved successfully',
+      data: classItem,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching class:', error);
+    res.status(500).json({
+      message: 'Error retrieving class',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Department Head management endpoints
+app.get('/api/department-heads', async (req, res) => {
+  try {
+    const departmentHeads = await DepartmentHead.find().populate('department').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Department Heads retrieved successfully',
+      data: departmentHeads,
+      count: departmentHeads.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching department heads:', error);
+    res.status(500).json({
+      message: 'Error retrieving department heads',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Token verification endpoint
+app.get('/api/auth/verify-token', authenticateToken, async (req, res) => {
+  try {
+    // The authenticateToken middleware already verified the token
+    // We just need to return the user data
+    const user = await getUserFromToken(req.user);
+    
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Token verified successfully',
+      data: user,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    res.status(500).json({
+      message: 'Error verifying token',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Helper function to get user data from token payload
+const getUserFromToken = async (tokenPayload) => {
+  try {
+    const { id, role } = tokenPayload;
+    
+    let user = null;
+    
+    switch (role) {
+      case 'admin':
+        user = await Admin.findById(id);
+        break;
+      case 'departmentHead':
+        user = await DepartmentHead.findById(id).populate('department');
+        break;
+      case 'teacher':
+        user = await Teacher.findById(id);
+        break;
+      case 'student':
+        user = await Student.findById(id).populate('department').populate('class');
+        break;
+      default:
+        return null;
+    }
+    
+    return user ? user.toJSON() : null;
+  } catch (error) {
+    console.error('Error getting user from token:', error);
+    return null;
+  }
+};
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

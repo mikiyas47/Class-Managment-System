@@ -1,0 +1,3 @@
+name,email,phoneNumber,userId,password
+John Teacher,john@example.com,1234567899,T003,password123
+Jane Teacher,jane@example.com,9876543219,T004,password123

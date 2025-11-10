@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Assignment Upload</title>
+</head>
+<body>
+    <h1>Test Assignment Upload</h1>
+    <form action="http://localhost:5000/api/assignments" method="post" enctype="multipart/form-data">
+        <label for="class">Class ID:</label>
+        <input type="text" id="class" name="class" value="6909af26d63a31d191a1c952" required><br><br>
+        
+        <label for="teacher">Teacher ID:</label>
+        <input type="text" id="teacher" name="teacher" value="6909ab9872d541ea92b71965" required><br><br>
+        
+        <label for="assignmentFile">Assignment File:</label>
+        <input type="file" id="assignmentFile" name="assignmentFile" required><br><br>
+        
+        <input type="submit" value="Upload Assignment">
+    </form>
+</body>
+</html>
