@@ -700,17 +700,37 @@ router.get('/:id/exams', authenticateToken, async (req, res) => {
     const allCourseIds = [...regularCourseIds, ...addedCourseIds];
     
     // Get exams for all courses
-    const exams = await Exam.find({
+    let exams = await Exam.find({
       course: { $in: allCourseIds }
     })
     .populate('course')
     .populate('class')
     .sort({ date: 1 });
 
+    // Filter exams to only show currently available ones for students
+    const now = new Date();
+    const filteredExams = exams.filter(exam => {
+      // Check if exam has started (with a small buffer for timing)
+      const fiveSecondsAgo = new Date(now.getTime() - 5000);
+      if (exam.startTime > now && exam.startTime > fiveSecondsAgo) {
+        return false; // Exam hasn't started yet
+      }
+      
+      // Calculate end time: startTime + duration (in minutes)
+      const endTime = new Date(exam.startTime.getTime() + exam.duration * 60000);
+      
+      // Check if exam has ended
+      if (now >= endTime) {
+        return false; // Exam has already ended
+      }
+      
+      return true; // Exam is currently available
+    });
+
     res.json({
       message: 'Student exams retrieved successfully',
-      data: exams,
-      count: exams.length,
+      data: filteredExams,
+      count: filteredExams.length,
       status: 'success'
     });
   } catch (error) {

@@ -195,6 +195,20 @@ router.get('/:id', authenticateToken, async (req, res) => {
           status: 'error'
         });
       }
+      
+      // Check if student has already submitted this exam
+      const StudentExam = (await import('../StudentExam.js')).default;
+      const studentExam = await StudentExam.findOne({ 
+        student: user.id, 
+        exam: id 
+      });
+      
+      if (studentExam && studentExam.submittedAt) {
+        return res.status(403).json({
+          message: 'You have already submitted this exam. Access denied.',
+          status: 'error'
+        });
+      }
     }
     
     // If user is a teacher, check if they have access to this exam

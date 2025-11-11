@@ -114,6 +114,10 @@ const StudentExamPage = ({ user }) => {
           if (errorData.message && errorData.message.includes('no longer available')) {
             throw new Error(`This exam is no longer available. The exam time has ended.`);
           }
+          // Check if it's a specific "already submitted" error
+          if (errorData.message && errorData.message.includes('already submitted')) {
+            throw new Error(`You have already submitted this exam. Access denied.`);
+          }
           throw new Error(errorData.message || `Failed to fetch exam (Status: ${examRes.status})`);
         }
       
