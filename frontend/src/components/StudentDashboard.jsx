@@ -334,11 +334,30 @@ const StudentDashboard = ({ user, onLogout }) => {
             <h2 className="text-2xl font-bold text-gray-800 mb-6">My Courses</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map(course => (
-                <div key={course._id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">{course.subject}</h3>
-                  <p className="text-gray-600 mb-1">Code: {course.code || 'N/A'}</p>
-                  <p className="text-gray-600 mb-1">Class: Year {course.class?.year} - {course.class?.semester} Semester</p>
-                  <p className="text-gray-600">Teacher: {course.teacher?.name || 'N/A'}</p>
+                <div key={course._id} className={`bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow ${course.isRetake ? 'border-l-4 border-yellow-500' : ''}`}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-800 mb-2">{course.subject}</h3>
+                      <p className="text-gray-600 mb-1">Code: {course.code || 'N/A'}</p>
+                      <p className="text-gray-600 mb-1">Class: Year {course.class?.year} - {course.class?.semester} Semester</p>
+                      <p className="text-gray-600">Teacher: {course.teacher?.name || 'N/A'}</p>
+                    </div>
+                    {course.isRetake && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Retake
+                      </span>
+                    )}
+                  </div>
+                  {course.isRetake && (
+                    <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+                      <p className="text-sm text-yellow-700">
+                        <span className="font-medium">Retake Information:</span> Originally from Year {course.originalClass?.year || 'N/A'}
+                      </p>
+                      <p className="text-sm text-yellow-700">
+                        Retaking in Year {course.assignedClass?.year || 'N/A'} - {course.retakeSemester?.semester || 'N/A'} Semester
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
               {courses.length === 0 && (

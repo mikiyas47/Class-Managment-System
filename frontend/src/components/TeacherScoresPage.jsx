@@ -160,7 +160,7 @@ const TeacherScoresPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
-      // First, get the exam ID for this course and exam title
+      // First, get all exams for this course and exam title
       const examsResponse = await fetch(`http://localhost:5000/api/exams?course=${courseId}&title=${encodeURIComponent(examTitle)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -169,7 +169,7 @@ const TeacherScoresPage = ({ user }) => {
       });
 
       if (!examsResponse.ok) {
-        throw new Error('Failed to fetch exam');
+        throw new Error('Failed to fetch exams');
       }
 
       const examsData = await examsResponse.json();
@@ -180,13 +180,43 @@ const TeacherScoresPage = ({ user }) => {
         return;
       }
       
-      // If there are multiple exams with the same title, we need to be more specific
-      // For now, we'll take the first one, but let's log if there are multiple
-      if (exams.length > 1) {
-        console.warn(`Multiple exams found for ${examTitle} in course ${courseId}. Using the first one.`);
-      }
+      // If there are multiple exams with the same title, we need to find the one the student actually took
+      let examId;
+      if (exams.length === 1) {
+        // If there's only one exam, use it
+        examId = exams[0]._id;
+      } else {
+        // If there are multiple exams, check which one the student has taken
+        console.log(`Multiple exams found for ${examTitle} in course ${courseId}. Checking which one the student took.`);
+        
+        // Check each exam to see if the student has taken it
+        let foundExam = false;
+        for (const exam of exams) {
+          const studentExamResponse = await fetch(`http://localhost:5000/api/student-exams?student=${studentId}&exam=${exam._id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (studentExamResponse.ok) {
+            const studentExamData = await studentExamResponse.json();
+            if (studentExamData.data && studentExamData.data.length > 0) {
+              // Found the exam that the student has taken
+              examId = exam._id;
+              console.log(`Found exam that student took: ${examId}`);
+              foundExam = true;
+              break;
+            }
+          }
+        }
       
-      const examId = exams[0]._id;
+        // If we still haven't found an exam, fall back to the first one
+        if (!foundExam) {
+          console.warn(`No exam found that student has taken for ${examTitle} in course ${courseId}, using the first one.`);
+          examId = exams[0]._id;
+        }
+      }
       
       setModalData({
         studentId,

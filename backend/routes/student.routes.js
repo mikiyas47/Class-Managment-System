@@ -642,12 +642,33 @@ router.get('/:id/courses', authenticateToken, async (req, res) => {
       .populate('class')
       .populate('teacher');
     
-    // Get added courses for this student
-    const addedCoursesRecords = await AddStudent.find({ student: id, status: 'enrolled' })
-      .populate('course');
+    // Get added courses for this student (including retake courses)
+    // Include both 'enrolled' and 'pending' status records
+    const addedCoursesRecords = await AddStudent.find({ 
+      student: id, 
+      status: { $in: ['enrolled', 'pending'] } 
+    })
+      .populate({
+        path: 'course',
+        populate: [
+          { path: 'department' },
+          { path: 'class' },
+          { path: 'teacher' }
+        ]
+      })
+      .populate('assignedClass')
+      .populate('originalClass');
     
-    // Extract course details from added courses
-    const addedCourses = addedCoursesRecords.map(record => record.course);
+    // Extract course details from added courses and mark them as retake courses
+    const addedCourses = addedCoursesRecords.map(record => {
+      const course = record.course.toObject();
+      course.isRetake = true;
+      course.originalClass = record.originalClass;
+      course.assignedClass = record.assignedClass;
+      course.retakeSemester = record.retakeSemester;
+      course.retakeStatus = record.status; // Add status information
+      return course;
+    });
     
     // Combine regular and added courses
     const allCourses = [...regularCourses, ...addedCourses];
