@@ -13,8 +13,8 @@ const router = express.Router();
 // JWT secret (should be in environment variables in production)
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_for_development';
 
-// Helper function to calculate student exam score
-const calculateStudentExamScore = async (studentExamId) => {
+// Helper function to calculate student exam score with weighted questions
+export const calculateStudentExamScore = async (studentExamId) => {
   try {
     // Get the student exam
     const studentExam = await StudentExam.findById(studentExamId).populate('exam');
@@ -29,6 +29,10 @@ const calculateStudentExamScore = async (studentExamId) => {
     
     if (answers.length === 0) {
       console.log('No answers found for student exam, score will be 0');
+      // Update student exam with calculated score and max score
+      studentExam.score = 0;
+      studentExam.maxScore = 0;
+      await studentExam.save();
       return 0;
     }
     
@@ -38,24 +42,136 @@ const calculateStudentExamScore = async (studentExamId) => {
     console.log(`Found ${questions.length} total questions for exam ${studentExam.exam._id}`);
     console.log(`Evaluating only the ${answers.length} questions that were answered by the student`);
     
-    // Calculate score - now using raw count of correct answers instead of percentage
-    let correctAnswers = 0;
+    // Calculate weighted score based on answered questions
+    let totalScore = 0;
+    let maxPossibleScore = 0;
+    
+    // For each answer, check if it's correct and add the question weight to the score
     answers.forEach(answer => {
       const question = questions.find(q => q._id.toString() === answer.question._id.toString());
-      if (question && answer.selectedOption === question.correctOption) {
-        correctAnswers++;
+      if (question) {
+        // Add the question's weight to the max possible score (only for answered questions)
+        maxPossibleScore += question.weight;
+        
+        // If the answer is correct, add the question's weight to the total score
+        if (answer.selectedOption === question.correctOption) {
+          totalScore += question.weight;
+        }
       }
     });
     
-    // Use raw count of correct answers as the score
-    const score = correctAnswers;
+    // Calculate total exam weight (sum of all question weights)
+    let totalExamWeight = 0;
+    questions.forEach(question => {
+      totalExamWeight += question.weight;
+    });
     
-    // Update student exam with calculated score
-    studentExam.score = score;
+    // Update student exam with calculated score and max score
+    studentExam.score = totalScore;
+    studentExam.maxScore = maxPossibleScore;
     await studentExam.save();
     
-    console.log(`Calculated score for student exam ${studentExamId}: ${score} correct answers out of ${answers.length} answered questions`);
-    return score;
+    console.log(`Calculated weighted score for student exam ${studentExamId}: ${totalScore} out of ${maxPossibleScore} (Total exam weight: ${totalExamWeight})`);
+    
+    // Update the results table with the new score
+    try {
+      // Import required models
+      const Result = (await import('../Result.js')).default;
+      const Exam = (await import('../Exam.js')).default;
+      
+      // Get the student and course information from the student exam
+      const exam = await Exam.findById(studentExam.exam);
+      if (!exam) {
+        console.log('Exam not found, skipping result update');
+        return totalScore;
+      }
+      
+      const studentId = studentExam.student;
+      const courseId = exam.course;
+      const classId = exam.class;
+      
+      console.log(`Updating results for student ${studentId}, course ${courseId}`);
+      
+      // Find existing result for this student and course
+      const existingResult = await Result.findOne({ student: studentId, course: courseId });
+      
+      // Prepare update data based on exam title
+      const updateData = {};
+      if (exam.title === 'Mid-exam') {
+        updateData.midExamScore = totalScore;
+      } else if (exam.title === 'Final-exam') {
+        updateData.finalExamScore = totalScore;
+      }
+      
+      // If result exists, update it
+      if (existingResult) {
+        // Update the specific exam score
+        const updatedResult = await Result.findByIdAndUpdate(
+          existingResult._id,
+          updateData,
+          { new: true, runValidators: true }
+        );
+        
+        // Recalculate overall score and grade
+        let overallScore = 0;
+        if (updatedResult.midExamScore !== null) overallScore += updatedResult.midExamScore;
+        if (updatedResult.finalExamScore !== null) overallScore += updatedResult.finalExamScore;
+        if (updatedResult.assignmentScore !== null) overallScore += updatedResult.assignmentScore;
+        
+        // Update overall score
+        updatedResult.overallScore = overallScore;
+        
+        // Recalculate grade based on new overall score
+        if (overallScore >= 90) updatedResult.grade = 'A+';
+        else if (overallScore >= 85) updatedResult.grade = 'A';
+        else if (overallScore >= 80) updatedResult.grade = 'A-';
+        else if (overallScore >= 75) updatedResult.grade = 'B+';
+        else if (overallScore >= 70) updatedResult.grade = 'B';
+        else if (overallScore >= 65) updatedResult.grade = 'B-';
+        else if (overallScore >= 60) updatedResult.grade = 'C+';
+        else if (overallScore >= 50) updatedResult.grade = 'C';
+        else if (overallScore >= 45) updatedResult.grade = 'C-';
+        else if (overallScore >= 40) updatedResult.grade = 'D';
+        else updatedResult.grade = 'F';
+        
+        await updatedResult.save();
+        console.log(`Updated existing result with new scores:`, updateData);
+      } else {
+        // Create new result if it doesn't exist
+        const resultData = {
+          student: studentId,
+          course: courseId,
+          class: classId,
+          overallScore: totalScore,
+          grade: totalScore >= 90 ? 'A+' : 
+                 totalScore >= 85 ? 'A' : 
+                 totalScore >= 80 ? 'A-' : 
+                 totalScore >= 75 ? 'B+' : 
+                 totalScore >= 70 ? 'B' : 
+                 totalScore >= 65 ? 'B-' : 
+                 totalScore >= 60 ? 'C+' : 
+                 totalScore >= 50 ? 'C' : 
+                 totalScore >= 45 ? 'C-' : 
+                 totalScore >= 40 ? 'D' : 'F'
+        };
+        
+        // Set the specific exam score
+        if (exam.title === 'Mid-exam') {
+          resultData.midExamScore = totalScore;
+        } else if (exam.title === 'Final-exam') {
+          resultData.finalExamScore = totalScore;
+        }
+        
+        const newResult = new Result(resultData);
+        await newResult.save();
+        console.log(`Created new result with scores:`, resultData);
+      }
+    } catch (resultError) {
+      console.error('Error updating results table:', resultError);
+      // Don't fail the score calculation if result update fails
+    }
+    
+    return totalScore;
   } catch (error) {
     console.error('Error calculating student exam score:', error);
     throw error;

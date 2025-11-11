@@ -17,7 +17,8 @@ const QuestionsPage = ({ user }) => {
         optionB: '',
         optionC: '',
         optionD: '',
-        correctOption: 'A'
+        correctOption: 'A',
+        weight: '1'
       }
     ]
   });
@@ -158,7 +159,8 @@ const QuestionsPage = ({ user }) => {
             optionB: question.optionB,
             optionC: question.optionC,
             optionD: question.optionD,
-            correctOption: question.correctOption
+            correctOption: question.correctOption,
+            weight: question.weight ? parseFloat(question.weight) : 1
           })
         });
 
@@ -214,7 +216,8 @@ const QuestionsPage = ({ user }) => {
           optionB: question.optionB,
           optionC: question.optionC,
           optionD: question.optionD,
-          correctOption: question.correctOption
+          correctOption: question.correctOption,
+          weight: question.weight ? question.weight.toString() : '1'
         }
       ]
     });
@@ -256,7 +259,8 @@ const QuestionsPage = ({ user }) => {
           optionB: q.optionB,
           optionC: q.optionC,
           optionD: q.optionD,
-          correctOption: q.correctOption
+          correctOption: q.correctOption,
+          weight: q.weight !== undefined ? parseFloat(q.weight) : undefined
         })
       });
 
@@ -402,7 +406,7 @@ const QuestionsPage = ({ user }) => {
                   <option value="">Select an exam</option>
                   {exams.map((exam) => (
                     <option key={exam._id} value={exam._id}>
-                      {exam.title}
+                      {exam.title} - {exam.class?.year ? `Year ${exam.class.year}` : ''} {exam.class?.semester ? `Semester ${exam.class.semester}` : ''}
                     </option>
                   ))}
                 </select>
@@ -520,6 +524,22 @@ const QuestionsPage = ({ user }) => {
                         <option value="C">C</option>
                         <option value="D">D</option>
                       </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Question Weight
+                      </label>
+                      <input
+                        type="number"
+                        value={question.weight}
+                        onChange={(e) => handleQuestionChange(index, 'weight', e.target.value)}
+                        min="0"
+                        step="0.1"
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., 1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Points for this question (default: 1)</p>
                     </div>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaChartBar, FaBook, FaUserGraduate, FaSearch, FaSave, FaEdit, FaEye } from 'react-icons/fa';
+import { FaChartBar, FaBook, FaUserGraduate, FaSearch, FaSave, FaEdit, FaEye, FaEyeSlash } from 'react-icons/fa';
 import StudentAnswersModal from './StudentAnswersModal';
 
 const TeacherScoresPage = ({ user }) => {
@@ -26,7 +26,10 @@ const TeacherScoresPage = ({ user }) => {
       result.student?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       result.student?.userId.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSearch;
+    // If a course is selected, only show results for that course
+    const matchesCourse = !selectedCourse || result.course?._id === selectedCourse;
+    
+    return matchesSearch && matchesCourse;
   });
 
   // Fetch courses taught by this teacher
@@ -199,6 +202,132 @@ const TeacherScoresPage = ({ user }) => {
     }
   };
 
+  // Toggle result visibility for students
+  const toggleResultVisibility = async (resultId, currentVisibility) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`http://localhost:5000/api/results/${resultId}/visibility`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          isVisibleToStudent: !currentVisibility
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update result visibility');
+      }
+
+      // Refresh the results list
+      fetchResults(selectedCourse || null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Make all results visible for the selected course
+  const makeAllVisibleForSelectedCourse = async () => {
+    if (!selectedCourse) {
+      setError('Please select a course first');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Get results for the selected course
+      const courseResults = results.filter(result => result.course?._id === selectedCourse);
+      
+      if (courseResults.length === 0) {
+        setError('No results found for the selected course');
+        return;
+      }
+      
+      // Make all results visible
+      const updatePromises = courseResults.map(result => {
+        // Only update if not already visible
+        if (!result.isVisibleToStudent) {
+          return fetch(`http://localhost:5000/api/results/${result._id}/visibility`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              isVisibleToStudent: true
+            })
+          });
+        }
+        return Promise.resolve();
+      });
+      
+      // Wait for all updates to complete
+      await Promise.all(updatePromises);
+      
+      // Refresh the results list
+      fetchResults(selectedCourse || null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Hide all results for the selected course
+  const hideAllForSelectedCourse = async () => {
+    if (!selectedCourse) {
+      setError('Please select a course first');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Get results for the selected course
+      const courseResults = results.filter(result => result.course?._id === selectedCourse);
+      
+      if (courseResults.length === 0) {
+        setError('No results found for the selected course');
+        return;
+      }
+      
+      // Hide all results
+      const updatePromises = courseResults.map(result => {
+        // Only update if currently visible
+        if (result.isVisibleToStudent) {
+          return fetch(`http://localhost:5000/api/results/${result._id}/visibility`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              isVisibleToStudent: false
+            })
+          });
+        }
+        return Promise.resolve();
+      });
+      
+      // Wait for all updates to complete
+      await Promise.all(updatePromises);
+      
+      // Refresh the results list
+      fetchResults(selectedCourse || null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString();
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       // First fetch courses
@@ -254,7 +383,7 @@ const TeacherScoresPage = ({ user }) => {
         <h1 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">Student Scores</h1>
         <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-2">
           {/* Course Selection */}
-          <div>
+          <div className="flex items-center space-x-2">
             <select
               value={selectedCourse}
               onChange={handleCourseChange}
@@ -267,6 +396,22 @@ const TeacherScoresPage = ({ user }) => {
                 </option>
               ))}
             </select>
+            {selectedCourse && (
+              <div className="flex space-x-1">
+                <button
+                  onClick={makeAllVisibleForSelectedCourse}
+                  className="px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 text-sm"
+                >
+                  Make All Visible
+                </button>
+                <button
+                  onClick={hideAllForSelectedCourse}
+                  className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm"
+                >
+                  Hide All
+                </button>
+              </div>
+            )}
           </div>
           
           {/* Search */}
@@ -312,12 +457,18 @@ const TeacherScoresPage = ({ user }) => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Grade
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Visibility
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredResults.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
                     {searchTerm || selectedCourse ? 'No results found matching your criteria' : 'No results available'}
                   </td>
                 </tr>
@@ -433,6 +584,36 @@ const TeacherScoresPage = ({ user }) => {
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getGradeColor(result.grade)}`}>
                         {result.grade || 'N/A'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {result.isVisibleToStudent ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <FaEye className="mr-1" /> Visible
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <FaEyeSlash className="mr-1" /> Hidden
+                          </span>
+                        )}
+                      </div>
+                      {result.isVisibleToStudent && result.madeVisibleAt && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {formatDate(result.madeVisibleAt)}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => toggleResultVisibility(result._id, result.isVisibleToStudent)}
+                        className={`px-3 py-1 rounded text-sm ${
+                          result.isVisibleToStudent 
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                      >
+                        {result.isVisibleToStudent ? 'Hide' : 'Show'}
+                      </button>
                     </td>
                   </tr>
                 ))

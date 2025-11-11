@@ -139,7 +139,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create new question
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { exam, questionText, optionA, optionB, optionC, optionD, correctOption } = req.body;
+    const { exam, questionText, optionA, optionB, optionC, optionD, correctOption, weight } = req.body;
     
     // Verify the token to get user information
     const token = req.headers.authorization?.split(' ')[1];
@@ -198,7 +198,8 @@ router.post('/', authenticateToken, async (req, res) => {
       optionB,
       optionC,
       optionD,
-      correctOption
+      correctOption,
+      weight: weight ? parseFloat(weight) : 1 // Default to 1 if not provided
     });
     
     await question.save();
@@ -233,7 +234,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { exam, questionText, optionA, optionB, optionC, optionD, correctOption } = req.body;
+    const { exam, questionText, optionA, optionB, optionC, optionD, correctOption, weight } = req.body;
     
     // Verify the token to get user information
     const token = req.headers.authorization?.split(' ')[1];
@@ -302,17 +303,28 @@ router.put('/:id', authenticateToken, async (req, res) => {
       });
     }
     
+    // Get the original question to check if correctOption is changing
+    const originalQuestion = await Question.findById(id);
+    const isCorrectOptionChanging = originalQuestion && originalQuestion.correctOption !== correctOption;
+    
+    const updateData = {
+      exam,
+      questionText,
+      optionA,
+      optionB,
+      optionC,
+      optionD,
+      correctOption
+    };
+    
+    // Only update weight if provided
+    if (weight !== undefined) {
+      updateData.weight = parseFloat(weight);
+    }
+    
     const question = await Question.findByIdAndUpdate(
       id,
-      {
-        exam,
-        questionText,
-        optionA,
-        optionB,
-        optionC,
-        optionD,
-        correctOption
-      },
+      updateData,
       { new: true, runValidators: true }
     ).populate('exam');
     
@@ -321,6 +333,35 @@ router.put('/:id', authenticateToken, async (req, res) => {
         message: 'Question not found',
         status: 'error'
       });
+    }
+    
+    // If the correct option changed, recalculate scores for all students who took exams with this question
+    if (isCorrectOptionChanging) {
+      try {
+        // Import required models
+        const StudentExam = (await import('../StudentExam.js')).default;
+        const Answer = (await import('../Answer.js')).default;
+        
+        // Find all student exams that include this question
+        const answers = await Answer.find({ question: id }).populate('studentExam');
+        const studentExamIds = [...new Set(answers.map(answer => answer.studentExam._id))];
+        
+        // Recalculate score for each affected student exam
+        for (const studentExamId of studentExamIds) {
+          try {
+            // Import the calculateStudentExamScore function
+            const { calculateStudentExamScore } = await import('./studentExam.routes.js');
+            await calculateStudentExamScore(studentExamId);
+          } catch (scoreError) {
+            console.error(`Error recalculating score for student exam ${studentExamId}:`, scoreError);
+          }
+        }
+        
+        console.log(`Recalculated scores for ${studentExamIds.length} student exams due to correct answer change`);
+      } catch (recalculationError) {
+        console.error('Error during score recalculation:', recalculationError);
+        // Don't fail the request if score recalculation fails, just log it
+      }
     }
     
     res.json({

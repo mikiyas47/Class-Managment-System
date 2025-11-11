@@ -271,7 +271,14 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
     
-    // Create new exam
+    // Validate that title is either "Mid-exam" or "Final-exam"
+    if (title !== 'Mid-exam' && title !== 'Final-exam') {
+      return res.status(400).json({
+        message: 'Exam title must be either "Mid-exam" or "Final-exam"',
+        status: 'error'
+      });
+    }
+    
     const exam = new Exam({
       class: classId,
       teacher,
@@ -369,6 +376,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (!classId || !teacher || !title || !duration || !startTime) {
       return res.status(400).json({
         message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate that title is either "Mid-exam" or "Final-exam"
+    if (title !== 'Mid-exam' && title !== 'Final-exam') {
+      return res.status(400).json({
+        message: 'Exam title must be either "Mid-exam" or "Final-exam"',
         status: 'error'
       });
     }

@@ -521,6 +521,130 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Update result visibility for students
+router.put('/:id/visibility', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isVisibleToStudent } = req.body;
+    
+    // Verify the token to get user information
+    const token = req.headers.authorization?.split(' ')[1];
+    let user = null;
+    
+    if (token) {
+      try {
+        user = jwt.verify(token, JWT_SECRET);
+      } catch (err) {
+        console.error('Token verification error:', err);
+      }
+    }
+    
+    // Only teachers can update result visibility
+    if (!user || user.userType !== 'teacher') {
+      return res.status(403).json({
+        message: 'Access denied. Only teachers can update result visibility.',
+        status: 'error'
+      });
+    }
+    
+    // Find the result
+    const result = await Result.findById(id);
+    if (!result) {
+      return res.status(404).json({
+        message: 'Result not found',
+        status: 'error'
+      });
+    }
+    
+    // Update visibility
+    result.isVisibleToStudent = isVisibleToStudent;
+    if (isVisibleToStudent) {
+      result.madeVisibleBy = user.id;
+      result.madeVisibleAt = new Date();
+    }
+    
+    await result.save();
+    
+    // Populate the response
+    const updatedResult = await Result.findById(id)
+      .populate('student')
+      .populate('course')
+      .populate('class')
+      .populate('madeVisibleBy', 'name email');
+    
+    res.json({
+      message: `Result ${isVisibleToStudent ? 'made visible' : 'hidden'} to student successfully`,
+      data: updatedResult,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating result visibility:', error);
+    res.status(500).json({
+      message: 'Error updating result visibility',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Get results for a teacher (all results for courses they teach)
+router.get('/teacher/:teacherId', authenticateToken, async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    
+    // Verify the token to get user information
+    const token = req.headers.authorization?.split(' ')[1];
+    let user = null;
+    
+    if (token) {
+      try {
+        user = jwt.verify(token, JWT_SECRET);
+      } catch (err) {
+        console.error('Token verification error:', err);
+      }
+    }
+    
+    // Only the teacher themselves or admins can access this
+    if (user && user.userType === 'teacher' && user.id !== teacherId) {
+      return res.status(403).json({
+        message: 'Access denied. You can only view results for courses you teach.',
+        status: 'error'
+      });
+    }
+    
+    // Import Course model
+    const Course = (await import('../Course.js')).default;
+    
+    // Get courses taught by this teacher
+    const courses = await Course.find({ teacher: teacherId });
+    const courseIds = courses.map(course => course._id);
+    
+    // Get results for these courses
+    const results = await Result.find({ 
+      course: { $in: courseIds }
+    })
+      .populate('student', 'name userId email')
+      .populate('course', 'subject code')
+      .populate('class', 'year semester department')
+      .populate('madeVisibleBy', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      message: 'Results retrieved successfully',
+      data: results,
+      count: results.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching results:', error);
+    res.status(500).json({
+      message: 'Error retrieving results',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Delete result by ID
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {

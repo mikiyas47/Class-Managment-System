@@ -35,6 +35,12 @@ const questionSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: ['A', 'B', 'C', 'D']
+  },
+  // Weight for this specific question
+  weight: {
+    type: Number,
+    default: 1, // Default weight of 1 point per question
+    min: 0
   }
 }, {
   timestamps: true

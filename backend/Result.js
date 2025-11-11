@@ -45,6 +45,20 @@ const resultSchema = new mongoose.Schema({
     type: String,
     enum: ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'],
     default: null
+  },
+  // Control field for when students can see their results
+  isVisibleToStudent: {
+    type: Boolean,
+    default: false // Initially hidden from students
+  },
+  // Teacher who made the result visible (for audit purposes)
+  madeVisibleBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Teacher'
+  },
+  // Timestamp when result was made visible to students
+  madeVisibleAt: {
+    type: Date
   }
 }, {
   timestamps: true

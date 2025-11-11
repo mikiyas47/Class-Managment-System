@@ -21,6 +21,11 @@ const studentExamSchema = new mongoose.Schema({
   score: {
     type: Number,
     min: 0
+  },
+  // Maximum possible score for this exam (based on question weights)
+  maxScore: {
+    type: Number,
+    min: 0
   }
 }, {
   timestamps: true

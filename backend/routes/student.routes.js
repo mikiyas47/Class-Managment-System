@@ -751,8 +751,11 @@ router.get('/:id/results', authenticateToken, async (req, res) => {
     // Import Result model
     const Result = (await import('../Result.js')).default;
     
-    // Get results for this student
-    const results = await Result.find({ student: id })
+    // Get results for this student that are visible to students
+    const results = await Result.find({ 
+      student: id,
+      isVisibleToStudent: true // Only return results that are visible to students
+    })
       .populate('student')
       .populate('course')
       .sort({ createdAt: -1 });
