@@ -19,6 +19,8 @@ const TeacherScoresPage = ({ user }) => {
     studentName: '',
     courseName: ''
   });
+  // Add state for storing exam information
+  const [exams, setExams] = useState({});
 
   // Filter results based on search term (client-side filtering for student names)
   const filteredResults = results.filter(result => {
@@ -85,6 +87,8 @@ const TeacherScoresPage = ({ user }) => {
       const data = await response.json();
       const teacherResults = data.data || [];
       
+      console.log('Fetched results:', teacherResults);
+      
       setResults(teacherResults);
     } catch (err) {
       setError(err.message);
@@ -150,6 +154,9 @@ const TeacherScoresPage = ({ user }) => {
       // Exit editing mode
       setEditingResultId(null);
       setEditingAssignmentScore('');
+      
+      // Refresh the results to ensure grade is recalculated
+      fetchResults(selectedCourse || null);
     } catch (err) {
       setError(err.message);
     }
@@ -366,7 +373,7 @@ const TeacherScoresPage = ({ user }) => {
       await fetchResults();
     };
     fetchData();
-  }, [user]);
+  }, []);
 
   const getGradeColor = (grade) => {
     switch (grade) {
@@ -383,6 +390,132 @@ const TeacherScoresPage = ({ user }) => {
       case 'F': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Add a function to manually recalculate results
+  const recalculateResults = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Get all unique student-course combinations from current results
+      const uniqueCombinations = [];
+      const seen = new Set();
+      
+      results.forEach(result => {
+        const key = `${result.student._id}-${result.course._id}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueCombinations.push({
+            studentId: result.student._id,
+            courseId: result.course._id,
+            classId: result.class._id
+          });
+        }
+      });
+      
+      console.log('Recalculating results for:', uniqueCombinations);
+      
+      // Trigger recalculation for each combination
+      for (const combo of uniqueCombinations) {
+        try {
+          const response = await fetch('http://localhost:5000/api/results/calculate', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(combo)
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to recalculate for:', combo);
+          } else {
+            console.log('Successfully recalculated for:', combo);
+          }
+        } catch (err) {
+          console.error('Error recalculating for:', combo, err);
+        }
+      }
+      
+      // Refresh the results
+      await fetchResults(selectedCourse || null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch exam information to get max scores
+  const fetchExamInfo = async (courseId, examTitle) => {
+    const cacheKey = `${courseId}-${examTitle}`;
+    
+    // Check if we already have this exam info cached
+    if (exams[cacheKey]) {
+      return exams[cacheKey];
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Fetch exams for this course and title
+      const response = await fetch(`http://localhost:5000/api/exams?course=${courseId}&title=${encodeURIComponent(examTitle)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch exam info');
+      }
+      
+      const data = await response.json();
+      const examList = data.data || [];
+      
+      if (examList.length === 0) {
+        return null;
+      }
+      
+      // Use the first exam (in case of multiple, we'll improve this later)
+      const exam = examList[0];
+      
+      // Fetch questions for this exam to calculate max score
+      const questionsResponse = await fetch(`http://localhost:5000/api/questions?exam=${exam._id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!questionsResponse.ok) {
+        throw new Error('Failed to fetch questions');
+      }
+      
+      const questionsData = await questionsResponse.json();
+      const questions = questionsData.data || [];
+      
+      // Calculate max score (sum of all question weights)
+      const maxScore = questions.reduce((sum, question) => sum + (question.weight || 1), 0);
+      
+      // Cache the result
+      const examInfo = { maxScore, examId: exam._id };
+      setExams(prev => ({ ...prev, [cacheKey]: examInfo }));
+      
+      return examInfo;
+    } catch (err) {
+      console.error('Error fetching exam info:', err);
+      return null;
+    }
+  };
+
+  // Format score with max score
+  const formatScoreWithMax = (score, maxScore) => {
+    if (score === null || maxScore === null) {
+      return 'N/A';
+    }
+    return `${score}/${maxScore}`;
   };
 
   if (loading && results.length === 0) {
@@ -528,7 +661,7 @@ const TeacherScoresPage = ({ user }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center space-x-2">
-                        <span>{result.midExamScore !== null ? result.midExamScore : 'N/A'}</span>
+                        <span>{result.midExamScore !== null ? `${result.midExamScore}/${result.midExamMaxScore || '?'}` : 'N/A'}</span>
                         {result.midExamScore !== null && result.student && result.course && (
                           <button
                             onClick={() => showAnswers(
@@ -545,10 +678,13 @@ const TeacherScoresPage = ({ user }) => {
                           </button>
                         )}
                       </div>
+                      {result.midExamScore !== null && !result.midExamMaxScore && (
+                        <div className="text-xs text-red-500">Max score missing</div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center space-x-2">
-                        <span>{result.finalExamScore !== null ? result.finalExamScore : 'N/A'}</span>
+                        <span>{result.finalExamScore !== null ? `${result.finalExamScore}/${result.finalExamMaxScore || '?'}` : 'N/A'}</span>
                         {result.finalExamScore !== null && result.student && result.course && (
                           <button
                             onClick={() => showAnswers(
@@ -565,6 +701,9 @@ const TeacherScoresPage = ({ user }) => {
                           </button>
                         )}
                       </div>
+                      {result.finalExamScore !== null && !result.finalExamMaxScore && (
+                        <div className="text-xs text-red-500">Max score missing</div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {editingResultId === result._id ? (

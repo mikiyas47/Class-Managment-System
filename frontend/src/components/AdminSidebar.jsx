@@ -36,12 +36,7 @@ const AdminSidebar = ({ activeNav, setActiveNav, onLogout, user }) => {
       label: 'Add Students',
       subItems: []
     },
-    { 
-      id: 'reports', 
-      icon: <FaChartLine />, 
-      label: 'Reports',
-      subItems: []
-    },
+
     { 
       id: 'settings', 
       icon: <FaCog />, 
@@ -54,7 +49,6 @@ const AdminSidebar = ({ activeNav, setActiveNav, onLogout, user }) => {
     dashboard: false,
     departments: false,
     'department-heads': false,
-    reports: false,
     settings: false
   });
 

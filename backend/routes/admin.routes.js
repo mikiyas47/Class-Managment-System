@@ -112,6 +112,58 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
+// Change admin password
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const adminId = req.user.id; // Get admin ID from authenticated token
+    
+    // Validate required fields
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: 'Current password and new password are required',
+        status: 'error'
+      });
+    }
+    
+    // Find admin by ID
+    const admin = await Admin.findById(adminId);
+    
+    if (!admin) {
+      return res.status(404).json({
+        message: 'Admin not found',
+        status: 'error'
+      });
+    }
+    
+    // Check if current password is correct
+    const isMatch = await admin.comparePassword(currentPassword);
+    
+    if (!isMatch) {
+      return res.status(400).json({
+        message: 'Current password is incorrect',
+        status: 'error'
+      });
+    }
+    
+    // Update password
+    admin.password = newPassword;
+    await admin.save();
+    
+    res.json({
+      message: 'Password changed successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({
+      message: 'Error changing password',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Update admin by ID
 router.put('/:id', authenticateToken, async (req, res) => {
   try {

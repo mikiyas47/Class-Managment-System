@@ -13,8 +13,6 @@ const router = express.Router();
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Test endpoint to check if route is accessible
-
 // Get all results
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -269,15 +267,31 @@ router.post('/calculate', authenticateToken, async (req, res) => {
       examId: se.exam._id,
       examTitle: se.exam.title,
       score: se.score,
+      maxScore: se.maxScore,
       submittedAt: se.submittedAt
     })));
     
     // Calculate scores - now more flexible to handle any exam titles
     let midExamScore = null;
+    let midExamMaxScore = null;
     let finalExamScore = null;
+    let finalExamMaxScore = null;
     let otherExamScores = []; // For any other exams
     let totalExamScore = 0; // Sum of all exam scores
     let examCount = 0; // Count of exams with scores
+    
+    // We need to fetch questions to calculate max scores properly
+    const examIds = studentExams.map(se => se.exam._id);
+    const Question = (await import('../Question.js')).default;
+    const examQuestions = await Question.find({ exam: { $in: examIds } });
+    
+    console.log('Found exam questions:', examQuestions.length);
+    console.log('Exam IDs:', examIds);
+    console.log('Exam questions:', examQuestions.map(q => ({
+      exam: q.exam.toString(),
+      weight: q.weight,
+      questionText: q.questionText.substring(0, 50) + '...'
+    })));
     
     studentExams.forEach(studentExam => {
       // Check if the student exam has a score (even if it's 0)
@@ -285,17 +299,33 @@ router.post('/calculate', authenticateToken, async (req, res) => {
         const examTitle = studentExam.exam.title.toLowerCase();
         console.log(`Processing exam: ${studentExam.exam.title} with score: ${studentExam.score} (type: ${typeof studentExam.score})`);
         
+        // Calculate max score for this exam by summing all question weights
+        const questionsForThisExam = examQuestions.filter(q => q.exam.toString() === studentExam.exam._id.toString());
+        console.log(`Found ${questionsForThisExam.length} questions for exam ${studentExam.exam._id}`);
+        
+        const maxScoreForThisExam = questionsForThisExam.reduce((sum, question) => {
+          const weight = question.weight || 1;
+          console.log(`Adding question weight: ${weight}`);
+          return sum + weight;
+        }, 0);
+        
+        console.log(`Calculated max score for exam ${studentExam.exam._id}: ${maxScoreForThisExam}`);
+        
         // More flexible matching for mid-term exams
         if ((examTitle.includes('mid') || examTitle.includes('Mid-exam')) && midExamScore === null) {
           midExamScore = studentExam.score;
+          // Calculate max score for this exam
+          midExamMaxScore = maxScoreForThisExam;
           totalExamScore += studentExam.score;
           examCount++;
-          console.log(`Set midExamScore to: ${studentExam.score}`);
+          console.log(`Set midExamScore to: ${studentExam.score}, maxScore: ${midExamMaxScore}`);
         } else if ((examTitle.includes('final') || examTitle.includes('Final-exam')) && finalExamScore === null) {
           finalExamScore = studentExam.score;
+          // Calculate max score for this exam
+          finalExamMaxScore = maxScoreForThisExam;
           totalExamScore += studentExam.score;
           examCount++;
-          console.log(`Set finalExamScore to: ${studentExam.score}`);
+          console.log(`Set finalExamScore to: ${studentExam.score}, maxScore: ${finalExamMaxScore}`);
         } else {
           // Add to other exam scores
           otherExamScores.push(studentExam.score);
@@ -309,7 +339,8 @@ router.post('/calculate', authenticateToken, async (req, res) => {
     });
     
     console.log(`Total exam score: ${totalExamScore}, Exam count: ${examCount}`);
-    console.log(`Mid exam score: ${midExamScore}, Final exam score: ${finalExamScore}`);
+    console.log(`Mid exam score: ${midExamScore}, Max: ${midExamMaxScore}`);
+    console.log(`Final exam score: ${finalExamScore}, Max: ${finalExamMaxScore}`);
     console.log(`Other exam scores:`, otherExamScores);
     
     // For assignment score, we would need to implement assignment submission and grading
@@ -323,21 +354,74 @@ router.post('/calculate', authenticateToken, async (req, res) => {
       console.log(`Calculated overall score: ${overallScore}`);
     }
 
-    // Determine grade based on overall score
+    console.log(`Checking grade calculation: overallScore=${overallScore}, examCount=${examCount}`);
+
+    // Determine grade based on overall score as a percentage
     let grade = null;
     if (overallScore !== null) {
-      if (overallScore >= 90) grade = 'A+';
-      else if (overallScore >= 85) grade = 'A';
-      else if (overallScore >= 80) grade = 'A-';
-      else if (overallScore >= 75) grade = 'B+';
-      else if (overallScore >= 70) grade = 'B';
-      else if (overallScore >= 65) grade = 'B-';
-      else if (overallScore >= 60) grade = 'C+';
-      else if (overallScore >= 50) grade = 'C';
-      else if (overallScore >= 45) grade = 'C-';
-      else if (overallScore >= 40) grade = 'D';
-      else grade = 'F';
-      console.log(`Assigned grade: ${grade}`);
+      console.log(`Entering grade calculation logic`);
+      
+      // Calculate grade based on overall score (mid + final + assignment) directly
+      // No division by max scores as per requirements
+      const percentage = overallScore;
+      
+      console.log(`Calculated score: ${percentage} (overall score: ${overallScore})`);
+      
+      // Log each condition for debugging
+      console.log(`Grade conditions: >=90:${percentage >= 90}, >=85:${percentage >= 85}, >=80:${percentage >= 80}`);
+      console.log(`Grade conditions: >=75:${percentage >= 75}, >=70:${percentage >= 70}, >=65:${percentage >= 65}`);
+      console.log(`Grade conditions: >=60:${percentage >= 60}, >=50:${percentage >= 50}, >=45:${percentage >= 45}`);
+      console.log(`Grade conditions: >=40:${percentage >= 40}`);
+      
+      // Ensure we're working with numbers for comparison
+      const score = Number(percentage);
+      
+      if (score >= 90) {
+        grade = 'A+';
+        console.log('Assigned grade: A+');
+      }
+      else if (score >= 85) {
+        grade = 'A';
+        console.log('Assigned grade: A');
+      }
+      else if (score >= 80) {
+        grade = 'A-';
+        console.log('Assigned grade: A-');
+      }
+      else if (score >= 75) {
+        grade = 'B+';
+        console.log('Assigned grade: B+');
+      }
+      else if (score >= 70) {
+        grade = 'B';
+        console.log('Assigned grade: B');
+      }
+      else if (score >= 65) {
+        grade = 'B-';
+        console.log('Assigned grade: B-');
+      }
+      else if (score >= 60) {
+        grade = 'C+';
+        console.log('Assigned grade: C+');
+      }
+      else if (score >= 50) {
+        grade = 'C';
+        console.log('Assigned grade: C');
+      }
+      else if (score >= 45) {
+        grade = 'C-';
+        console.log('Assigned grade: C-');
+      }
+      else if (score >= 40) {
+        grade = 'D';
+        console.log('Assigned grade: D');
+      }
+      else {
+        grade = 'F';
+        console.log('Assigned grade: F');
+      }
+    } else {
+      console.log(`Skipping grade calculation: overallScore is null`);
     }
     
     // Create or update result
@@ -346,13 +430,17 @@ router.post('/calculate', authenticateToken, async (req, res) => {
       course: courseId,
       class: classId,
       midExamScore,
+      midExamMaxScore,
       finalExamScore,
+      finalExamMaxScore,
       assignmentScore,
       overallScore,
       grade
     };
     
     console.log('Result data to save:', resultData);
+    console.log('Mid exam max score type:', typeof midExamMaxScore, 'value:', midExamMaxScore);
+    console.log('Final exam max score type:', typeof finalExamMaxScore, 'value:', finalExamMaxScore);
     
     // Check if result already exists
     const existingResult = await Result.findOne({ student: studentId, course: courseId });
@@ -378,6 +466,8 @@ router.post('/calculate', authenticateToken, async (req, res) => {
     }
     
     console.log('Result saved successfully:', savedResult);
+    console.log('Saved result midExamMaxScore:', savedResult.midExamMaxScore);
+    console.log('Saved result finalExamMaxScore:', savedResult.finalExamMaxScore);
     
     res.status(201).json({
       message: 'Result calculated and saved successfully',
@@ -406,7 +496,7 @@ router.post('/calculate', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { midExamScore, finalExamScore, assignmentScore, overallScore, grade } = req.body;
+    const { midExamScore, midExamMaxScore, finalExamScore, finalExamMaxScore, assignmentScore, overallScore: reqOverallScore, grade } = req.body;
     
     // Validate that the ID is a valid MongoDB ObjectId
     if (!id || id === 'undefined' || id === 'null' || id.trim() === '') {
@@ -458,38 +548,49 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Update the result
     const updateData = {};
     if (midExamScore !== undefined) updateData.midExamScore = midExamScore;
+    if (midExamMaxScore !== undefined) updateData.midExamMaxScore = midExamMaxScore;
     if (finalExamScore !== undefined) updateData.finalExamScore = finalExamScore;
+    if (finalExamMaxScore !== undefined) updateData.finalExamMaxScore = finalExamMaxScore;
     if (assignmentScore !== undefined) updateData.assignmentScore = assignmentScore;
+    if (reqOverallScore !== undefined) updateData.overallScore = reqOverallScore;
     if (grade !== undefined) updateData.grade = grade;
     
-    // Recalculate overall score based on updated values
-    const currentMidExamScore = midExamScore !== undefined ? midExamScore : result.midExamScore;
-    const currentFinalExamScore = finalExamScore !== undefined ? finalExamScore : result.finalExamScore;
-    const currentAssignmentScore = assignmentScore !== undefined ? assignmentScore : result.assignmentScore;
-    
-    // Calculate overall score (simple sum of all scores)
-    const scores = [currentMidExamScore, currentFinalExamScore, currentAssignmentScore].filter(score => score !== null);
-    if (scores.length > 0) {
-      updateData.overallScore = scores.reduce((sum, score) => sum + (score || 0), 0);
-    } else {
-      updateData.overallScore = null;
-    }
-    
-    // Recalculate grade based on new overall score using the new grading system
-    if (updateData.overallScore !== null) {
-      if (updateData.overallScore >= 90) updateData.grade = 'A+';
-      else if (updateData.overallScore >= 85) updateData.grade = 'A';
-      else if (updateData.overallScore >= 80) updateData.grade = 'A-';
-      else if (updateData.overallScore >= 75) updateData.grade = 'B+';
-      else if (updateData.overallScore >= 70) updateData.grade = 'B';
-      else if (updateData.overallScore >= 65) updateData.grade = 'B-';
-      else if (updateData.overallScore >= 60) updateData.grade = 'C+';
-      else if (updateData.overallScore >= 50) updateData.grade = 'C';
-      else if (updateData.overallScore >= 45) updateData.grade = 'C-';
-      else if (updateData.overallScore >= 40) updateData.grade = 'D';
+    // Only recalculate overall score and grade if specific scores are being updated
+    // and overallScore wasn't explicitly provided
+    if ((midExamScore !== undefined || finalExamScore !== undefined || assignmentScore !== undefined) && 
+        reqOverallScore === undefined) {
+      // Recalculate overall score based on updated values
+      const currentMidExamScore = midExamScore !== undefined ? midExamScore : result.midExamScore;
+      const currentMidExamMaxScore = midExamMaxScore !== undefined ? midExamMaxScore : result.midExamMaxScore;
+      const currentFinalExamScore = finalExamScore !== undefined ? finalExamScore : result.finalExamScore;
+      const currentFinalExamMaxScore = finalExamMaxScore !== undefined ? finalExamMaxScore : result.finalExamMaxScore;
+      const currentAssignmentScore = assignmentScore !== undefined ? assignmentScore : result.assignmentScore;
+      
+      // Calculate overall score (sum of all scores)
+      let calculatedOverallScore = 0;
+      if (currentMidExamScore !== null) calculatedOverallScore += currentMidExamScore;
+      if (currentFinalExamScore !== null) calculatedOverallScore += currentFinalExamScore;
+      if (currentAssignmentScore !== null) calculatedOverallScore += currentAssignmentScore;
+      updateData.overallScore = calculatedOverallScore;
+      
+      // Recalculate grade based on overall score (mid + final + assignment) directly
+      // No division by max scores as per requirements
+      const percentage = calculatedOverallScore;
+      
+      // Ensure we're working with numbers for comparison
+      const score = Number(percentage);
+      
+      if (score >= 90) updateData.grade = 'A+';
+      else if (score >= 85) updateData.grade = 'A';
+      else if (score >= 80) updateData.grade = 'A-';
+      else if (score >= 75) updateData.grade = 'B+';
+      else if (score >= 70) updateData.grade = 'B';
+      else if (score >= 65) updateData.grade = 'B-';
+      else if (score >= 60) updateData.grade = 'C+';
+      else if (score >= 50) updateData.grade = 'C';
+      else if (score >= 45) updateData.grade = 'C-';
+      else if (score >= 40) updateData.grade = 'D';
       else updateData.grade = 'F';
-    } else {
-      updateData.grade = null;
     }
     
     const updatedResult = await Result.findByIdAndUpdate(
@@ -505,14 +606,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating result:', error);
-    
-    if (error.code === 11000) {
-      return res.status(400).json({
-        message: 'A result for this student and course already exists',
-        status: 'error'
-      });
-    }
-    
     res.status(500).json({
       message: 'Error updating result',
       error: error.message,
@@ -521,134 +614,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Update result visibility for students
-router.put('/:id/visibility', authenticateToken, async (req, res) => {
+// Toggle result visibility for students
+router.patch('/:id/visibility', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { isVisibleToStudent } = req.body;
-    
-    // Verify the token to get user information
-    const token = req.headers.authorization?.split(' ')[1];
-    let user = null;
-    
-    if (token) {
-      try {
-        user = jwt.verify(token, JWT_SECRET);
-      } catch (err) {
-        console.error('Token verification error:', err);
-      }
-    }
-    
-    // Only teachers can update result visibility
-    if (!user || user.userType !== 'teacher') {
-      return res.status(403).json({
-        message: 'Access denied. Only teachers can update result visibility.',
-        status: 'error'
-      });
-    }
-    
-    // Find the result
-    const result = await Result.findById(id);
-    if (!result) {
-      return res.status(404).json({
-        message: 'Result not found',
-        status: 'error'
-      });
-    }
-    
-    // Update visibility
-    result.isVisibleToStudent = isVisibleToStudent;
-    if (isVisibleToStudent) {
-      result.madeVisibleBy = user.id;
-      result.madeVisibleAt = new Date();
-    }
-    
-    await result.save();
-    
-    // Populate the response
-    const updatedResult = await Result.findById(id)
-      .populate('student')
-      .populate('course')
-      .populate('class')
-      .populate('madeVisibleBy', 'name email');
-    
-    res.json({
-      message: `Result ${isVisibleToStudent ? 'made visible' : 'hidden'} to student successfully`,
-      data: updatedResult,
-      status: 'success'
-    });
-  } catch (error) {
-    console.error('Error updating result visibility:', error);
-    res.status(500).json({
-      message: 'Error updating result visibility',
-      error: error.message,
-      status: 'error'
-    });
-  }
-});
-
-// Get results for a teacher (all results for courses they teach)
-router.get('/teacher/:teacherId', authenticateToken, async (req, res) => {
-  try {
-    const { teacherId } = req.params;
-    
-    // Verify the token to get user information
-    const token = req.headers.authorization?.split(' ')[1];
-    let user = null;
-    
-    if (token) {
-      try {
-        user = jwt.verify(token, JWT_SECRET);
-      } catch (err) {
-        console.error('Token verification error:', err);
-      }
-    }
-    
-    // Only the teacher themselves or admins can access this
-    if (user && user.userType === 'teacher' && user.id !== teacherId) {
-      return res.status(403).json({
-        message: 'Access denied. You can only view results for courses you teach.',
-        status: 'error'
-      });
-    }
-    
-    // Import Course model
-    const Course = (await import('../Course.js')).default;
-    
-    // Get courses taught by this teacher
-    const courses = await Course.find({ teacher: teacherId });
-    const courseIds = courses.map(course => course._id);
-    
-    // Get results for these courses
-    const results = await Result.find({ 
-      course: { $in: courseIds }
-    })
-      .populate('student', 'name userId email')
-      .populate('course', 'subject code')
-      .populate('class', 'year semester department')
-      .populate('madeVisibleBy', 'name email')
-      .sort({ createdAt: -1 });
-
-    res.json({
-      message: 'Results retrieved successfully',
-      data: results,
-      count: results.length,
-      status: 'success'
-    });
-  } catch (error) {
-    console.error('Error fetching results:', error);
-    res.status(500).json({
-      message: 'Error retrieving results',
-      error: error.message,
-      status: 'error'
-    });
-  }
-});
-
-// Delete result by ID
-router.delete('/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
+    const { isVisible } = req.body;
     
     // Validate that the ID is a valid MongoDB ObjectId
     if (!id || id === 'undefined' || id === 'null' || id.trim() === '') {
@@ -672,13 +642,22 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     
     if (token) {
       try {
-        user = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET);
+        user = decoded;
       } catch (err) {
         console.error('Token verification error:', err);
       }
     }
     
-    // Find the result
+    // Only teachers can toggle visibility
+    if (!user || user.userType !== 'teacher') {
+      return res.status(403).json({
+        message: 'Access denied. Only teachers can toggle result visibility.',
+        status: 'error'
+      });
+    }
+    
+    // Find the result and update visibility
     const result = await Result.findById(id);
     if (!result) {
       return res.status(404).json({
@@ -687,27 +666,27 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       });
     }
     
-    // If user is a student, check if they have access to this result
-    if (user && user.userType === 'student' && user.id) {
-      if (result.student.toString() !== user.id) {
-        return res.status(403).json({
-          message: 'Access denied. You can only delete your own results.',
-          status: 'error'
-        });
-      }
+    // Update visibility fields
+    result.isVisibleToStudent = isVisible;
+    if (isVisible) {
+      result.madeVisibleBy = user.teacherId;
+      result.madeVisibleAt = new Date();
+    } else {
+      result.madeVisibleBy = null;
+      result.madeVisibleAt = null;
     }
     
-    // Delete the result
-    await Result.findByIdAndDelete(id);
+    const updatedResult = await result.save();
     
     res.json({
-      message: 'Result deleted successfully',
+      message: `Result ${isVisible ? 'made visible' : 'hidden'} to student successfully`,
+      data: updatedResult,
       status: 'success'
     });
   } catch (error) {
-    console.error('Error deleting result:', error);
+    console.error('Error toggling result visibility:', error);
     res.status(500).json({
-      message: 'Error deleting result',
+      message: 'Error toggling result visibility',
       error: error.message,
       status: 'error'
     });

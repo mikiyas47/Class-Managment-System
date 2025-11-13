@@ -22,13 +22,25 @@ const resultSchema = new mongoose.Schema({
     min: 0,
     default: null
   },
+  // Max score for Mid-exam
+  midExamMaxScore: {
+    type: Number,
+    min: 0,
+    default: null
+  },
   // Final-exam score (from StudentExam where exam title is "Final-exam")
   finalExamScore: {
     type: Number,
     min: 0,
     default: null
   },
-  // Assignment score (to be implemented)
+  // Max score for Final-exam
+  finalExamMaxScore: {
+    type: Number,
+    min: 0,
+    default: null
+  },
+  // Assignment score
   assignmentScore: {
     type: Number,
     min: 0,

@@ -15,6 +15,7 @@ import AdminSidebar from './AdminSidebar';
 import AddDepartmentHead from './AddDepartmentHead';
 import DepartmentsPage from './DepartmentsPage';
 import AddStudentsPage from './AddStudentsPage';
+import SettingsPage from './SettingsPage';
 
 const AdminDashboard = ({ user, onLogout }) => {
   const [stats, setStats] = useState({
@@ -257,6 +258,8 @@ const AdminDashboard = ({ user, onLogout }) => {
               <DepartmentsPage />
             ) : activeNav === 'add-students' ? (
               <AddStudentsPage />
+            ) : activeNav === 'settings' ? (
+              <SettingsPage user={user} />
             ) : (
               <DashboardContent />
             )}

@@ -339,7 +339,9 @@ const QuestionsPage = ({ user }) => {
     const exam = exams.find(e => e._id === examId || e._id === examId._id);
     if (!exam) return 'Unknown Exam';
     
-    return exam.title;
+    // Include class year and semester information
+    const classInfo = exam.class ? `Year ${exam.class.year} ${exam.class.semester}` : '';
+    return `${exam.title}${classInfo ? ` (${classInfo})` : ''}`;
   };
 
   if (loading) {

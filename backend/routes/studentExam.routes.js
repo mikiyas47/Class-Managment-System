@@ -99,10 +99,12 @@ export const calculateStudentExamScore = async (studentExamId) => {
       const updateData = {};
       if (exam.title === 'Mid-exam') {
         updateData.midExamScore = totalScore;
+        updateData.midExamMaxScore = totalExamWeight; // Add max score
       } else if (exam.title === 'Final-exam') {
         updateData.finalExamScore = totalScore;
+        updateData.finalExamMaxScore = totalExamWeight; // Add max score
       }
-      
+
       // If result exists, update it
       if (existingResult) {
         // Update the specific exam score
@@ -114,52 +116,67 @@ export const calculateStudentExamScore = async (studentExamId) => {
         
         // Recalculate overall score and grade
         let overallScore = 0;
+        let totalMaxScore = 0;
+
         if (updatedResult.midExamScore !== null) overallScore += updatedResult.midExamScore;
         if (updatedResult.finalExamScore !== null) overallScore += updatedResult.finalExamScore;
         if (updatedResult.assignmentScore !== null) overallScore += updatedResult.assignmentScore;
-        
+
+        if (updatedResult.midExamMaxScore !== null) totalMaxScore += updatedResult.midExamMaxScore;
+        if (updatedResult.finalExamMaxScore !== null) totalMaxScore += updatedResult.finalExamMaxScore;
+
         // Update overall score
         updatedResult.overallScore = overallScore;
+
+        // Recalculate grade based on overall score directly
+        // No division by max scores as per requirements
+        const percentage = overallScore;
+
+        // Ensure we're working with numbers for comparison
+        const score = Number(percentage);
         
-        // Recalculate grade based on new overall score
-        if (overallScore >= 90) updatedResult.grade = 'A+';
-        else if (overallScore >= 85) updatedResult.grade = 'A';
-        else if (overallScore >= 80) updatedResult.grade = 'A-';
-        else if (overallScore >= 75) updatedResult.grade = 'B+';
-        else if (overallScore >= 70) updatedResult.grade = 'B';
-        else if (overallScore >= 65) updatedResult.grade = 'B-';
-        else if (overallScore >= 60) updatedResult.grade = 'C+';
-        else if (overallScore >= 50) updatedResult.grade = 'C';
-        else if (overallScore >= 45) updatedResult.grade = 'C-';
-        else if (overallScore >= 40) updatedResult.grade = 'D';
+        if (score >= 90) updatedResult.grade = 'A+';
+        else if (score >= 85) updatedResult.grade = 'A';
+        else if (score >= 80) updatedResult.grade = 'A-';
+        else if (score >= 75) updatedResult.grade = 'B+';
+        else if (score >= 70) updatedResult.grade = 'B';
+        else if (score >= 65) updatedResult.grade = 'B-';
+        else if (score >= 60) updatedResult.grade = 'C+';
+        else if (score >= 50) updatedResult.grade = 'C';
+        else if (score >= 45) updatedResult.grade = 'C-';
+        else if (score >= 40) updatedResult.grade = 'D';
         else updatedResult.grade = 'F';
-        
+
         await updatedResult.save();
         console.log(`Updated existing result with new scores:`, updateData);
       } else {
         // Create new result if it doesn't exist
+        // Ensure we're working with numbers for comparison
+        const score = Number(totalScore);
         const resultData = {
           student: studentId,
           course: courseId,
           class: classId,
           overallScore: totalScore,
-          grade: totalScore >= 90 ? 'A+' : 
-                 totalScore >= 85 ? 'A' : 
-                 totalScore >= 80 ? 'A-' : 
-                 totalScore >= 75 ? 'B+' : 
-                 totalScore >= 70 ? 'B' : 
-                 totalScore >= 65 ? 'B-' : 
-                 totalScore >= 60 ? 'C+' : 
-                 totalScore >= 50 ? 'C' : 
-                 totalScore >= 45 ? 'C-' : 
-                 totalScore >= 40 ? 'D' : 'F'
+          grade: score >= 90 ? 'A+' : 
+            score >= 85 ? 'A' : 
+            score >= 80 ? 'A-' : 
+            score >= 75 ? 'B+' : 
+            score >= 70 ? 'B' : 
+            score >= 65 ? 'B-' : 
+            score >= 60 ? 'C+' : 
+            score >= 50 ? 'C' : 
+            score >= 45 ? 'C-' : 
+            score >= 40 ? 'D' : 'F'
         };
         
-        // Set the specific exam score
+        // Set the specific exam score and max score
         if (exam.title === 'Mid-exam') {
           resultData.midExamScore = totalScore;
+          resultData.midExamMaxScore = totalExamWeight; // Add max score
         } else if (exam.title === 'Final-exam') {
           resultData.finalExamScore = totalScore;
+          resultData.finalExamMaxScore = totalExamWeight; // Add max score
         }
         
         const newResult = new Result(resultData);
@@ -496,6 +513,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     ).populate('student').populate('exam');
+    
+    // If score was updated, recalculate the score and update results
+    if (score !== undefined) {
+      await calculateStudentExamScore(id);
+    }
     
     res.json({
       message: 'Student exam updated successfully',
