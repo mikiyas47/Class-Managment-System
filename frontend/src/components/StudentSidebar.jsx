@@ -1,4 +1,4 @@
-import { FaHome, FaBook, FaClipboardList, FaTasks, FaChartBar, FaBell, FaSignOutAlt, FaBars } from 'react-icons/fa';
+import { FaHome, FaBook, FaClipboardList, FaTasks, FaChartBar, FaBell, FaSignOutAlt, FaBars, FaCog } from 'react-icons/fa';
 
 const StudentSidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarOpen, setSidebarOpen }) => {
   const navItems = [
@@ -8,6 +8,7 @@ const StudentSidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarOpen, 
     { id: 'assignments', label: 'Assignments', icon: FaTasks },
     { id: 'results', label: 'My Results', icon: FaChartBar },
     { id: 'announcements', label: 'Announcements', icon: FaBell },
+    { id: 'settings', label: 'Settings', icon: FaCog },
   ];
 
   return (

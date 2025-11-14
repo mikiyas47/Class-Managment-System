@@ -1,4 +1,4 @@
-import { FaHome, FaBook, FaUserGraduate, FaSignOutAlt, FaChalkboardTeacher, FaClipboardList, FaBullhorn, FaQuestionCircle, FaFileAlt, FaChartBar } from 'react-icons/fa';
+import { FaHome, FaBook, FaUserGraduate, FaSignOutAlt, FaChalkboardTeacher, FaClipboardList, FaBullhorn, FaQuestionCircle, FaFileAlt, FaChartBar, FaCog } from 'react-icons/fa';
 
 const TeacherSidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarOpen, setSidebarOpen }) => {
   const navItems = [
@@ -10,6 +10,7 @@ const TeacherSidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarOpen, 
     { id: 'announcements', label: 'Announcements', icon: FaBullhorn },
     { id: 'students', label: 'Students', icon: FaUserGraduate },
     { id: 'scores', label: 'Student Scores', icon: FaChartBar },
+    { id: 'settings', label: 'Settings', icon: FaCog },
   ];
 
   return (

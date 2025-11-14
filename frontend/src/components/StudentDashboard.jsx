@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import StudentSidebar from './StudentSidebar';
 import { FaBook, FaTasks, FaClipboardList, FaChartBar, FaBell, FaBars, FaDownload } from 'react-icons/fa';
 import io from 'socket.io-client';
+import SettingsPage from './SettingsPage';
 
 // ExamRow component for real-time countdown
 const ExamRow = ({ exam, examEndTime, navigate }) => {
@@ -548,6 +549,8 @@ const StudentDashboard = ({ user, onLogout }) => {
             </div>
           </div>
         );
+      case 'settings':
+        return <SettingsPage user={user} onLogout={onLogout} />;
       default:
         return <div>Page not found</div>;
     }
@@ -601,7 +604,8 @@ const StudentDashboard = ({ user, onLogout }) => {
                  activeTab === 'exams' ? 'Exams' : 
                  activeTab === 'assignments' ? 'Assignments' : 
                  activeTab === 'results' ? 'My Results' : 
-                 activeTab === 'announcements' ? 'Announcements' : ''}
+                 activeTab === 'announcements' ? 'Announcements' : 
+                 activeTab === 'settings' ? 'Settings' : ''}
               </h1>
             </div>
             <div className="flex items-center space-x-4">

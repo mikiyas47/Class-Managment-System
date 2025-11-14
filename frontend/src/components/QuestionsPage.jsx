@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaQuestionCircle } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaQuestionCircle, FaSearch, FaFilter } from 'react-icons/fa';
 
 const QuestionsPage = ({ user }) => {
   const [questions, setQuestions] = useState([]);
@@ -22,6 +22,28 @@ const QuestionsPage = ({ user }) => {
       }
     ]
   });
+  
+  // Filter states
+  const [examFilter, setExamFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Get unique exam types with class year and semester
+  const getUniqueExamTypes = () => {
+    const examTypes = exams.map(exam => {
+      const classInfo = exam.class ? `Year ${exam.class.year} ${exam.class.semester}` : '';
+      return {
+        value: `${exam.title}||${exam.class?.year || ''}||${exam.class?.semester || ''}`,
+        label: `${exam.title}${classInfo ? ` (${classInfo})` : ''}`
+      };
+    });
+    
+    // Remove duplicates based on value
+    const uniqueTypes = examTypes.filter((type, index, self) => 
+      index === self.findIndex(t => t.value === type.value)
+    );
+    
+    return uniqueTypes.sort((a, b) => a.label.localeCompare(b.label));
+  };
 
   useEffect(() => {
     fetchQuestions();
@@ -343,6 +365,44 @@ const QuestionsPage = ({ user }) => {
     const classInfo = exam.class ? `Year ${exam.class.year} ${exam.class.semester}` : '';
     return `${exam.title}${classInfo ? ` (${classInfo})` : ''}`;
   };
+  
+  // Filter questions based on selected filters
+  const filteredQuestions = questions.filter(question => {
+    // Get the exam for this question
+    const exam = exams.find(e => e._id === question.exam._id || e._id === question.exam);
+    
+    // Filter by exam type (title, year, and semester)
+    if (examFilter) {
+      const filterParts = examFilter.split('||');
+      const filterTitle = filterParts[0];
+      const filterYear = filterParts[1];
+      const filterSemester = filterParts[2];
+      
+      if (exam.title !== filterTitle) return false;
+      if (filterYear && exam.class && exam.class.year.toString() !== filterYear) return false;
+      if (filterSemester && exam.class && exam.class.semester !== filterSemester) return false;
+    }
+    
+    // Filter by search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const questionText = question.questionText.toLowerCase();
+      const optionA = question.optionA.toLowerCase();
+      const optionB = question.optionB.toLowerCase();
+      const optionC = question.optionC.toLowerCase();
+      const optionD = question.optionD.toLowerCase();
+      
+      if (!questionText.includes(searchLower) && 
+          !optionA.includes(searchLower) && 
+          !optionB.includes(searchLower) && 
+          !optionC.includes(searchLower) && 
+          !optionD.includes(searchLower)) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
 
   if (loading) {
     return (
@@ -379,11 +439,62 @@ const QuestionsPage = ({ user }) => {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="mt-4 md:mt-0 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+          className="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-md"
         >
           <FaPlus className="mr-2" />
           {editingQuestion ? 'Edit Question' : 'Create Questions'}
         </button>
+      </div>
+      
+      {/* Filters and Search */}
+      <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Filter by Exam Type, Year & Semester
+            </label>
+            <select
+              value={examFilter}
+              onChange={(e) => setExamFilter(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+            >
+              <option value="">All Exams</option>
+              {getUniqueExamTypes().map(type => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Search Questions
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search questions or options..."
+                className="w-full pl-10 pr-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <button
+              onClick={() => {
+                setExamFilter('');
+                setSearchTerm('');
+              }}
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition-colors"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Question Form */}
@@ -564,7 +675,7 @@ const QuestionsPage = ({ user }) => {
             <div className="flex space-x-3 mt-6">
               <button
                 type="submit"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors shadow-md"
               >
                 <FaSave className="mr-2" />
                 {editingQuestion ? 'Update Question' : 'Create Questions'}
@@ -583,14 +694,18 @@ const QuestionsPage = ({ user }) => {
       )}
 
       {/* Questions List */}
-      {questions.length === 0 ? (
+      {filteredQuestions.length === 0 ? (
         <div className="bg-white rounded-xl shadow-md p-8 text-center">
           <FaQuestionCircle className="mx-auto text-gray-400 text-4xl" />
           <h3 className="text-xl font-semibold text-gray-800 mt-4">No Questions</h3>
-          <p className="text-gray-600 mt-2">You haven't created any questions yet.</p>
+          <p className="text-gray-600 mt-2">
+            {questions.length === 0 
+              ? "You haven't created any questions yet." 
+              : "No questions match the current filters."}
+          </p>
           <button
             onClick={() => setShowForm(true)}
-            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md"
           >
             Create Your First Question
           </button>
@@ -619,7 +734,7 @@ const QuestionsPage = ({ user }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {questions.map((question) => (
+                {filteredQuestions.map((question) => (
                   <tr key={question._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900 max-w-md truncate">

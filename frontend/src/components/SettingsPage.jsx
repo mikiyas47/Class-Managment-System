@@ -47,7 +47,17 @@ const SettingsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:5000/api/admin/change-password', {
+      // Determine the correct endpoint based on user type
+      let endpoint = 'http://localhost:5000/api/admin/change-password';
+      if (user && user.userType === 'department-head') {
+        endpoint = 'http://localhost:5000/api/department-heads/change-password';
+      } else if (user && user.userType === 'teacher') {
+        endpoint = 'http://localhost:5000/api/teachers/change-password';
+      } else if (user && user.userType === 'student') {
+        endpoint = 'http://localhost:5000/api/students/change-password';
+      }
+      
+      const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

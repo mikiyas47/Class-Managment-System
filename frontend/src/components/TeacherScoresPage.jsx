@@ -245,13 +245,13 @@ const TeacherScoresPage = ({ user }) => {
       const token = localStorage.getItem('token');
       
       const response = await fetch(`http://localhost:5000/api/results/${resultId}/visibility`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          isVisibleToStudent: !currentVisibility
+          isVisible: !currentVisibility
         })
       });
 
@@ -290,13 +290,13 @@ const TeacherScoresPage = ({ user }) => {
         // Only update if not already visible
         if (!result.isVisibleToStudent) {
           return fetch(`http://localhost:5000/api/results/${result._id}/visibility`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              isVisibleToStudent: true
+              isVisible: true
             })
           });
         }
@@ -336,13 +336,13 @@ const TeacherScoresPage = ({ user }) => {
         // Only update if currently visible
         if (result.isVisibleToStudent) {
           return fetch(`http://localhost:5000/api/results/${result._id}/visibility`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              isVisibleToStudent: false
+              isVisible: false
             })
           });
         }

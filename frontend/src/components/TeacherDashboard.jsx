@@ -8,6 +8,7 @@ import QuestionsPage from './QuestionsPage';
 import AssignmentsPage from './AssignmentsPage';
 import TeacherStudentsPage from './TeacherStudentsPage';
 import TeacherScoresPage from './TeacherScoresPage';
+import SettingsPage from './SettingsPage';
 import './TeacherDashboard.css';
 
 const TeacherDashboard = ({ user, onLogout, courses = [], announcements = [], loading: externalLoading = false }) => {
@@ -256,6 +257,8 @@ const TeacherDashboard = ({ user, onLogout, courses = [], announcements = [], lo
         return <TeacherStudentsPage user={user} />;
       case 'scores':
         return <TeacherScoresPage user={user} />;
+      case 'settings':
+        return <SettingsPage user={user} />;
       default:
         return <div>Page not found</div>;
     }
@@ -292,7 +295,8 @@ const TeacherDashboard = ({ user, onLogout, courses = [], announcements = [], lo
                  activeTab === 'assignments' ? 'Assignments' : 
                  activeTab === 'announcements' ? 'Announcements' : 
                  activeTab === 'students' ? 'Students' : 
-                 activeTab === 'scores' ? 'Student Scores' : ''}
+                 activeTab === 'scores' ? 'Student Scores' : 
+                 activeTab === 'settings' ? 'Settings' : ''}
               </h1>
             </div>
             <div className="flex items-center space-x-4">

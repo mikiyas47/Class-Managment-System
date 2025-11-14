@@ -252,113 +252,6 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Update teacher by ID
-router.put('/:id', authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { userId, name, email, phoneNumber } = req.body;
-    
-    // Validate required fields (password is not required for updates)
-    if (!userId || !name || !email || !phoneNumber) {
-      return res.status(400).json({
-        message: 'All fields are required',
-        status: 'error'
-      });
-    }
-    
-    // Check if another teacher with this userId already exists
-    const existingUserId = await Teacher.findOne({
-      userId,
-      _id: { $ne: id }
-    });
-    
-    if (existingUserId) {
-      return res.status(400).json({
-        message: 'Teacher with this user ID already exists',
-        status: 'error'
-      });
-    }
-    
-    // Check if another teacher with this email already exists
-    const existingEmail = await Teacher.findOne({
-      email,
-      _id: { $ne: id }
-    });
-    
-    if (existingEmail) {
-      return res.status(400).json({
-        message: 'Teacher with this email already exists',
-        status: 'error'
-      });
-    }
-    
-    // Check if another teacher with this phone number already exists
-    const existingPhone = await Teacher.findOne({
-      phoneNumber,
-      _id: { $ne: id }
-    });
-    
-    if (existingPhone) {
-      return res.status(400).json({
-        message: 'Teacher with this phone number already exists',
-        status: 'error'
-      });
-    }
-    
-    const teacher = await Teacher.findByIdAndUpdate(
-      id,
-      { userId, name, email, phoneNumber },
-      { new: true, runValidators: true }
-    );
-    
-    if (!teacher) {
-      return res.status(404).json({
-        message: 'Teacher not found',
-        status: 'error'
-      });
-    }
-    
-    res.json({
-      message: 'Teacher updated successfully',
-      data: {
-        id: teacher._id,
-        userId: teacher.userId,
-        name: teacher.name,
-        email: teacher.email,
-        phoneNumber: teacher.phoneNumber
-      },
-      status: 'success'
-    });
-  } catch (error) {
-    console.error('Error updating teacher:', error);
-    
-    if (error.code === 11000) {
-      if (error.keyPattern.userId) {
-        return res.status(400).json({
-          message: 'Teacher with this user ID already exists',
-          status: 'error'
-        });
-      } else if (error.keyPattern.email) {
-        return res.status(400).json({
-          message: 'Teacher with this email already exists',
-          status: 'error'
-        });
-      } else if (error.keyPattern.phoneNumber) {
-        return res.status(400).json({
-          message: 'Teacher with this phone number already exists',
-          status: 'error'
-        });
-      }
-    }
-    
-    res.status(500).json({
-      message: 'Error updating teacher',
-      error: error.message,
-      status: 'error'
-    });
-  }
-});
-
 // Bulk upload teachers via CSV
 router.post('/bulk-upload', authenticateToken, (req, res, next) => {
   // Handle the file upload with proper error handling
@@ -509,6 +402,173 @@ router.post('/bulk-upload', authenticateToken, (req, res, next) => {
     console.error('Bulk upload error:', error);
     res.status(500).json({
       message: error.message || 'Error processing bulk upload',
+      status: 'error'
+    });
+  }
+});
+
+// Change teacher password
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const teacherId = req.user.id; // Get teacher ID from authenticated token
+    
+    // Validate required fields
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: 'Current password and new password are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate password length
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: 'New password must be at least 6 characters long',
+        status: 'error'
+      });
+    }
+    
+    // Find teacher by ID
+    const teacher = await Teacher.findById(teacherId);
+    
+    if (!teacher) {
+      return res.status(404).json({
+        message: 'Teacher not found',
+        status: 'error'
+      });
+    }
+    
+    // Check if current password is correct
+    const isMatch = await teacher.comparePassword(currentPassword);
+    
+    if (!isMatch) {
+      return res.status(400).json({
+        message: 'Current password is incorrect',
+        status: 'error'
+      });
+    }
+    
+    // Update password
+    teacher.password = newPassword;
+    await teacher.save();
+    
+    res.json({
+      message: 'Password changed successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({
+      message: 'Error changing password',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Update teacher by ID
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, name, email, phoneNumber } = req.body;
+    
+    // Validate required fields (password is not required for updates)
+    if (!userId || !name || !email || !phoneNumber) {
+      return res.status(400).json({
+        message: 'All fields are required',
+        status: 'error'
+      });
+    }
+    
+    // Check if another teacher with this userId already exists
+    const existingUserId = await Teacher.findOne({
+      userId,
+      _id: { $ne: id }
+    });
+    
+    if (existingUserId) {
+      return res.status(400).json({
+        message: 'Teacher with this user ID already exists',
+        status: 'error'
+      });
+    }
+    
+    // Check if another teacher with this email already exists
+    const existingEmail = await Teacher.findOne({
+      email,
+      _id: { $ne: id }
+    });
+    
+    if (existingEmail) {
+      return res.status(400).json({
+        message: 'Teacher with this email already exists',
+        status: 'error'
+      });
+    }
+    
+    // Check if another teacher with this phone number already exists
+    const existingPhone = await Teacher.findOne({
+      phoneNumber,
+      _id: { $ne: id }
+    });
+    
+    if (existingPhone) {
+      return res.status(400).json({
+        message: 'Teacher with this phone number already exists',
+        status: 'error'
+      });
+    }
+    
+    const teacher = await Teacher.findByIdAndUpdate(
+      id,
+      { userId, name, email, phoneNumber },
+      { new: true, runValidators: true }
+    );
+    
+    if (!teacher) {
+      return res.status(404).json({
+        message: 'Teacher not found',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Teacher updated successfully',
+      data: {
+        id: teacher._id,
+        userId: teacher.userId,
+        name: teacher.name,
+        email: teacher.email,
+        phoneNumber: teacher.phoneNumber
+      },
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating teacher:', error);
+    
+    if (error.code === 11000) {
+      if (error.keyPattern.userId) {
+        return res.status(400).json({
+          message: 'Teacher with this user ID already exists',
+          status: 'error'
+        });
+      } else if (error.keyPattern.email) {
+        return res.status(400).json({
+          message: 'Teacher with this email already exists',
+          status: 'error'
+        });
+      } else if (error.keyPattern.phoneNumber) {
+        return res.status(400).json({
+          message: 'Teacher with this phone number already exists',
+          status: 'error'
+        });
+      }
+    }
+    
+    res.status(500).json({
+      message: 'Error updating teacher',
+      error: error.message,
       status: 'error'
     });
   }

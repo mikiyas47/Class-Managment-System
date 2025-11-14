@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { FaUser, FaBuilding, FaUsers, FaChalkboardTeacher, FaBars, FaHome, FaUserGraduate, FaChalkboard, FaBook, FaUserTie } from 'react-icons/fa';
+import { FaUser, FaBuilding, FaUsers, FaChalkboardTeacher, FaBars, FaHome, FaUserGraduate, FaChalkboard, FaBook, FaUserTie, FaCog } from 'react-icons/fa';
 import DepartmentHeadSidebar from './DepartmentHeadSidebar.jsx';
 import TeachersPage from './TeachersPage.jsx';
 import StudentsPage from './StudentsPage.jsx';
 import ClassesPage from './ClassesPage.jsx';
 import CoursesPage from './CoursesPage.jsx';
+import SettingsPage from './SettingsPage.jsx';
 
 const DepartmentHeadDashboard = ({ user, onLogout }) => {
   // Debug: Log the user data when component mounts
@@ -210,6 +211,13 @@ const DepartmentHeadDashboard = ({ user, onLogout }) => {
                   <FaBook className="mr-3" />
                   Courses
                 </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`flex items-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'settings' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200' : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                >
+                  <FaCog className="mr-3" />
+                  Settings
+                </button>
               </nav>
             </div>
             <div className="flex-shrink-0 flex border-t border-gray-200 dark:border-gray-700 p-4">
@@ -256,7 +264,8 @@ const DepartmentHeadDashboard = ({ user, onLogout }) => {
                 {activeTab === 'dashboard' ? 'Dashboard' : 
                  activeTab === 'teachers' ? 'Teachers Management' : 
                  activeTab === 'students' ? 'Students Management' : 
-                 activeTab === 'classes' ? 'Classes Management' : 'Courses Management'}
+                 activeTab === 'classes' ? 'Classes Management' : 
+                 activeTab === 'courses' ? 'Courses Management' : 'Settings'}
               </h1>
             </div>
             <div className="flex items-center">
@@ -276,6 +285,8 @@ const DepartmentHeadDashboard = ({ user, onLogout }) => {
             <ClassesPage user={user} /> // Pass user data to ClassesPage
           ) : activeTab === 'courses' ? (
             <CoursesPage />
+          ) : activeTab === 'settings' ? (
+            <SettingsPage user={user} />
           ) : (
             <>
               {loading ? (
