@@ -24,6 +24,84 @@ const CoursesPage = () => {
     class: ''
   });
 
+  // Helper function to get department name
+  const getDepartmentName = (department) => {
+    // If department is already an object with name property
+    if (department && typeof department === 'object' && department.name) {
+      return department.name;
+    }
+    
+    // If department is an ID (string)
+    if (typeof department === 'string') {
+      const dept = departments.find(d => d._id === department);
+      if (dept) {
+        return dept.name;
+      }
+    }
+    
+    // If department is an object with _id
+    if (department && department._id) {
+      const dept = departments.find(d => d._id === department._id);
+      if (dept) {
+        return dept.name;
+      }
+    }
+    
+    return 'N/A';
+  };
+
+  // Helper function to get teacher name
+  const getTeacherName = (teacher) => {
+    // If teacher is already an object with name property
+    if (teacher && typeof teacher === 'object' && teacher.name) {
+      return teacher.name;
+    }
+    
+    // If teacher is an ID (string)
+    if (typeof teacher === 'string') {
+      const teach = teachers.find(t => t._id === teacher);
+      if (teach) {
+        return teach.name;
+      }
+    }
+    
+    // If teacher is an object with _id
+    if (teacher && teacher._id) {
+      const teach = teachers.find(t => t._id === teacher._id);
+      if (teach) {
+        return teach.name;
+      }
+    }
+    
+    return 'N/A';
+  };
+
+  // Helper function to get class name
+  const getClassName = (cls) => {
+    // If class is already an object with year and semester properties
+    if (cls && typeof cls === 'object' && cls.year && cls.semester) {
+      return `Year ${cls.year}, ${cls.semester === 'first' ? 'First' : 'Second'} Semester`;
+    }
+    
+    // If class is an ID (string)
+    if (typeof cls === 'string') {
+      const classObj = classes.find(c => c._id === cls);
+      if (classObj) {
+        return `Year ${classObj.year}, ${classObj.semester === 'first' ? 'First' : 'Second'} Semester`;
+      }
+    }
+    
+    // If class is an object with _id
+    if (cls && cls._id) {
+      const classObj = classes.find(c => c._id === cls._id);
+      if (classObj) {
+        return `Year ${classObj.year}, ${classObj.semester === 'first' ? 'First' : 'Second'} Semester`;
+      }
+    }
+    
+    return 'N/A';
+  };
+
   // Fetch courses
   const fetchCourses = async () => {
     try {
@@ -365,73 +443,73 @@ const CoursesPage = () => {
       </div>
 
       {/* Courses Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Code
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Subject
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Credit Hours
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Department
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Teacher
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Class
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white divide-y divide-gray-200">
               {filteredCourses.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                    {loading ? 'Loading...' : 'No courses found'}
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-900">
+                    No courses found
                   </td>
                 </tr>
               ) : (
                 filteredCourses.map((course) => (
-                  <tr key={course._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                  <tr key={course._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {course.code}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {course.subject}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {course.crh}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {course.department?.name || 'N/A'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {getDepartmentName(course.department)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {course.teacher?.name || 'N/A'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {getTeacherName(course.teacher)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {course.class ? `Year ${course.class.year}, Sem ${course.class.semester}` : 'N/A'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {getClassName(course.class)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
+                      <button
                         onClick={() => handleEditCourse(course)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                        className="text-blue-600 hover:text-blue-900 mr-3"
                         title="Edit course"
                       >
                         <FaEdit />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteCourse(course._id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        className="text-red-600 hover:text-red-900"
                         title="Delete course"
                       >
                         <FaTrash />

@@ -261,33 +261,33 @@ const ClassesPage = ({ user }) => { // Accept user prop
       </div>
 
       {/* Classes Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-700">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Department
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Year
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Semester
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="bg-white divide-y divide-gray-200">
               {filteredClasses.length === 0 ? (
-                <tr key="no-classes" className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <tr key="no-classes" className="hover:bg-gray-50">
                   <td className="px-6 py-12 text-center" colSpan="4">
                     <div className="flex flex-col items-center justify-center">
                       <FaListAlt className="h-12 w-12 text-gray-400 mb-2" />
-                      <p className="text-lg font-medium text-gray-600 dark:text-gray-300">
+                      <p className="text-lg font-medium text-gray-900">
                         No classes found
                       </p>
                       {searchTerm && (
-                        <p className="text-sm text-gray-500 dark:text-black mt-1">
+                        <p className="text-sm text-gray-900 mt-1">
                           No classes match your search "{searchTerm}"
                         </p>
                       )}
@@ -296,11 +296,11 @@ const ClassesPage = ({ user }) => { // Accept user prop
                 </tr>
               ) : (
                 filteredClasses.map((cls) => (
-                  <tr key={cls._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr key={cls._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <FaUniversity className="mr-2 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <span className="text-sm font-medium text-gray-900">
                           {getDepartmentName(cls.department)}
                         </span>
                       </div>
@@ -308,7 +308,7 @@ const ClassesPage = ({ user }) => { // Accept user prop
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <FaCalendarAlt className="mr-2 text-gray-400" />
-                        <span className="text-sm text-gray-900 dark:text-white">
+                        <span className="text-sm text-gray-900">
                           Year {cls.year}
                         </span>
                       </div>
@@ -316,7 +316,7 @@ const ClassesPage = ({ user }) => { // Accept user prop
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <FaListAlt className="mr-2 text-gray-400" />
-                        <span className="text-sm text-gray-900 dark:text-white">
+                        <span className="text-sm text-gray-900">
                           {formatSemester(cls.semester)}
                         </span>
                       </div>
