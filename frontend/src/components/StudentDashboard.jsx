@@ -101,39 +101,6 @@ const StudentDashboard = ({ user, onLogout }) => {
     };
   }, [user._id]);
 
-  // Fetch exams function
-  const fetchExams = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const studentId = user._id;
-
-      const examsRes = await fetch(`http://localhost:5000/api/students/${studentId}/exams`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      const examsData = await examsRes.json();
-
-      if (examsData.status === 'success') {
-        setExams(examsData.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch exams:', err);
-    }
-  };
-
-  // Set up interval to refresh exams periodically
-  useEffect(() => {
-    if (activeTab === 'exams') {
-      // Fetch exams immediately when switching to exams tab
-      fetchExams();
-      
-      // Set up interval to refresh exams every 30 seconds
-      const interval = setInterval(fetchExams, 30000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [activeTab, user._id]);
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -141,6 +108,7 @@ const StudentDashboard = ({ user, onLogout }) => {
         const studentId = user._id;
 
         // Fetch all student data in parallel
+        // Note: We're using the general endpoints that already handle student-specific filtering
         const [
           coursesRes,
           examsRes,
@@ -151,16 +119,16 @@ const StudentDashboard = ({ user, onLogout }) => {
           fetch(`http://localhost:5000/api/students/${studentId}/courses`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/students/${studentId}/exams`, {
+          fetch(`http://localhost:5000/api/exams`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/students/${studentId}/assignments`, {
+          fetch(`http://localhost:5000/api/assignments`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/students/${studentId}/results`, {
+          fetch(`http://localhost:5000/api/results`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/students/${studentId}/announcements`, {
+          fetch(`http://localhost:5000/api/announcements`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);
@@ -198,10 +166,40 @@ const StudentDashboard = ({ user, onLogout }) => {
       }
     };
 
-    if (user && user._id) {
-      fetchData();
+    fetchData();
+  }, [user._id]);
+
+  // Fetch exams function
+  const fetchExams = async () => {
+    try {
+      const token = localStorage.getItem('token');
+
+      const examsRes = await fetch(`http://localhost:5000/api/exams`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const examsData = await examsRes.json();
+
+      if (examsData.status === 'success') {
+        setExams(examsData.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch exams:', err);
     }
-  }, [user]);
+  };
+
+  // Set up interval to refresh exams periodically
+  useEffect(() => {
+    if (activeTab === 'exams') {
+      // Fetch exams immediately when switching to exams tab
+      fetchExams();
+      
+      // Set up interval to refresh exams every 30 seconds
+      const interval = setInterval(fetchExams, 30000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString();

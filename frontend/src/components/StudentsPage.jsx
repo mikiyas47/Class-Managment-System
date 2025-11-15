@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaPlus, FaUserGraduate, FaEnvelope, FaPhone, FaIdCard, FaUniversity, FaChalkboard, FaUpload, FaSearch, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaUserGraduate, FaEnvelope, FaPhone, FaIdCard, FaUniversity, FaChalkboard, FaUpload, FaSearch, FaEdit, FaTrash, FaTimes, FaUsers } from 'react-icons/fa';
 import BulkUpload from './BulkUpload';
 import SearchBar from './SearchBar';
 
@@ -14,6 +14,10 @@ const StudentsPage = () => {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredStudents, setFilteredStudents] = useState([]);
+  const [selectedStudents, setSelectedStudents] = useState([]); // For bulk actions
+  const [isUpgrading, setIsUpgrading] = useState(false); // For upgrade loading state
+  const [nextClassInfo, setNextClassInfo] = useState(null); // For previewing next class
+  const [showPreview, setShowPreview] = useState(false); // For showing preview modal
   
   const [editingStudent, setEditingStudent] = useState(null);
   const [formData, setFormData] = useState({
@@ -100,10 +104,15 @@ const StudentsPage = () => {
   };
 
   // Fetch all classes
-  const fetchClasses = async () => {
+  const fetchClasses = async (departmentId = '') => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/classes', {
+      let url = 'http://localhost:5000/api/classes';
+      if (departmentId) {
+        url += `?department=${departmentId}`;
+      }
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -127,20 +136,21 @@ const StudentsPage = () => {
   // Handle class selection change
   const handleClassChange = (e) => {
     const classId = e.target.value;
-    const selectedClassObj = classes.find(c => c._id === classId);
     setSelectedClass(classId);
     
-    // Set the department ID from the selected class
-    if (selectedClassObj && selectedClassObj.department) {
-      const deptId = typeof selectedClassObj.department === 'string' 
-        ? selectedClassObj.department 
-        : selectedClassObj.department._id;
-      setSelectedDepartmentId(deptId);
-    } else {
-      setSelectedDepartmentId('');
-    }
+    // Update filtered students when class changes
+    setFilteredStudents(filterStudents(students, searchTerm, classId));
     
-    fetchStudents(classId);
+    // Clear student selection when class changes
+    setSelectedStudents([]);
+  };
+
+  // Get department ID from selected class
+  const getDepartmentIdFromClass = (classId) => {
+    if (!classId) return '';
+    const selectedClassObj = classes.find(cls => cls._id === classId);
+    // Return the department ID, not the entire department object
+    return selectedClassObj && selectedClassObj.department ? selectedClassObj.department._id || selectedClassObj.department : '';
   };
 
   // Handle department change
@@ -245,6 +255,7 @@ const StudentsPage = () => {
       
       // Log the current form data for debugging
       console.log('Form data:', formData);
+      console.log('Editing student:', editingStudent);
       
       // Validate required fields
       const requiredFields = editingStudent 
@@ -274,8 +285,8 @@ const StudentsPage = () => {
         userId: formData.userId,
         email: formData.email,
         phoneNo: formData.phoneNo,
-        department: selectedDepartmentId, // Use the pre-selected department
-        class: selectedClass // Use the pre-selected class
+        department: formData.department || selectedDepartmentId, // Use form data if available, otherwise use selected
+        class: formData.class || selectedClass // Use form data if available, otherwise use selected
       };
       
       // Only include password if it's provided (for both add and edit)
@@ -290,6 +301,9 @@ const StudentsPage = () => {
       
       const method = editingStudent ? 'PUT' : 'POST';
       
+      // Log the request for debugging
+      console.log('Student request:', { url, method, requestBody });
+      
       const response = await fetch(url, {
         method,
         headers: {
@@ -301,6 +315,7 @@ const StudentsPage = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.log('Student update error response:', errorData);
         throw new Error(errorData.message || `Failed to ${editingStudent ? 'update' : 'add'} student`);
       }
 
@@ -341,117 +356,407 @@ const StudentsPage = () => {
     );
   }
 
+  // Handle student selection for bulk actions
+  const handleStudentSelect = (studentId) => {
+    setSelectedStudents(prev => {
+      if (prev.includes(studentId)) {
+        return prev.filter(id => id !== studentId);
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  // Handle select all students in current view (filtered students)
+  const handleSelectAll = () => {
+    if (selectedStudents.length === filteredStudents.length && filteredStudents.length > 0) {
+      // If all filtered students are selected, deselect all
+      const currentFilteredStudentIds = filteredStudents.map(student => student._id);
+      setSelectedStudents(prev => prev.filter(id => !currentFilteredStudentIds.includes(id)));
+    } else {
+      // Select all filtered students
+      const currentFilteredStudentIds = filteredStudents.map(student => student._id);
+      setSelectedStudents(prev => {
+        // Keep previously selected students that are not in current view
+        const otherSelected = prev.filter(id => !currentFilteredStudentIds.includes(id));
+        // Add all currently filtered students
+        return [...otherSelected, ...currentFilteredStudentIds];
+      });
+    }
+  };
+
+  // Select all students in the currently selected class
+  const handleSelectAllInClass = async () => {
+    if (!selectedClass) {
+      setError('Please select a class first');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Fetch all students in the selected class
+      const response = await fetch(`http://localhost:5000/api/students/class/${selectedClass}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch students in class');
+      }
+      
+      const data = await response.json();
+      const classStudents = data.data || [];
+      
+      // Select all students in this class
+      setSelectedStudents(classStudents.map(student => student._id));
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get next class information for a student
+  const getNextClassInfo = async (studentId) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/students/next-class', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ studentId })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get next class information');
+      }
+
+      return data.data;
+    } catch (err) {
+      throw new Error(err.message);
+    }
+  };
+
+  // Preview next class for selected students
+  const handlePreviewNextClass = async () => {
+    if (selectedStudents.length === 0) {
+      setError('Please select at least one student to preview');
+      return;
+    }
+
+    if (selectedStudents.length > 1) {
+      setError('Please select only one student to preview');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const info = await getNextClassInfo(selectedStudents[0]);
+      setNextClassInfo(info);
+      setShowPreview(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Upgrade selected students
+  const handleUpgradeStudents = async () => {
+    if (selectedStudents.length === 0) {
+      setError('Please select at least one student to upgrade');
+      return;
+    }
+
+    // Show preview before upgrading if only one student is selected
+    if (selectedStudents.length === 1) {
+      try {
+        const info = await getNextClassInfo(selectedStudents[0]);
+        setNextClassInfo(info);
+        setShowPreview(true);
+        return;
+      } catch (err) {
+        setError(err.message);
+        return;
+      }
+    }
+
+    // For multiple students, confirm directly
+    if (!window.confirm(`Are you sure you want to upgrade ${selectedStudents.length} student(s) to the next semester?`)) {
+      return;
+    }
+
+    try {
+      setIsUpgrading(true);
+      setError(null);
+      
+      const response = await fetch('http://localhost:5000/api/students/upgrade-class', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ studentIds: selectedStudents })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to upgrade students');
+      }
+
+      // Refresh the student list
+      await fetchStudents(selectedClass);
+      
+      // Clear selection
+      setSelectedStudents([]);
+      
+      // Show success message
+      alert(`${data.data.updatedStudents.length} students upgraded successfully`);
+      
+      // Show any errors
+      if (data.data.errors && data.data.errors.length > 0) {
+        setError(`Some students could not be upgraded: ${data.data.errors.join(', ')}`);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+
+  // Confirm upgrade after preview
+  const confirmUpgrade = async () => {
+    try {
+      setIsUpgrading(true);
+      setShowPreview(false);
+      setError(null);
+      
+      const response = await fetch('http://localhost:5000/api/students/upgrade-class', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ studentIds: selectedStudents })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to upgrade students');
+      }
+
+      // Refresh the student list
+      await fetchStudents(selectedClass);
+      
+      // Clear selection
+      setSelectedStudents([]);
+      
+      // Show success message
+      alert(`${data.data.updatedStudents.length} students upgraded successfully`);
+      
+      // Show any errors
+      if (data.data.errors && data.data.errors.length > 0) {
+        setError(`Some students could not be upgraded: ${data.data.errors.join(', ')}`);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Error banner at the top of the page */}
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-          <p className="font-bold">Error</p>
-          <p>{error}</p>
-          <button 
-            onClick={() => setError(null)}
-            className="mt-2 text-red-800 hover:text-red-900 font-medium"
-          >
-            Dismiss
-          </button>
+      <div className="flex flex-col space-y-4 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+          <h1 className="text-2xl font-bold text-gray-800">Students Management</h1>
+          <div className="w-full md:w-1/3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search students..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      )}
-      
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-800 mb-4 md:mb-0">Students Management</h1>
-        <div className="flex items-center space-x-2">
-          {selectedClass && (
+        
+        {/* Class Filter */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+          <div className="w-full sm:w-64">
+            <label htmlFor="class-filter" className="block text-sm font-medium text-gray-700 mb-1">
+              Filter by Class
+            </label>
+            <select
+              id="class-filter"
+              value={selectedClass}
+              onChange={handleClassChange}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Classes</option>
+              {classes.map((cls) => (
+                <option key={cls._id} value={cls._id}>
+                  Year {cls.year}, {cls.semester === 'first' ? 'First' : 'Second'} Semester
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex items-center space-x-2">
             <BulkUpload 
-              onUpload={handleBulkUploadSuccess} 
+              onUpload={fetchStudents} 
               entityName="student" 
               endpoint="students"
               token={localStorage.getItem('token')}
-              departmentId={selectedDepartmentId}
+              departmentId={getDepartmentIdFromClass(selectedClass)}
               classId={selectedClass}
               compact={true}
-              disabled={!selectedClass}
             />
-          )}
-          <button
-            onClick={handleAddStudentClick}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 text-sm rounded-md flex items-center justify-center transition-colors"
-          >
-            <FaPlus className="mr-1.5" size={14} /> Add Student
-          </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 text-sm rounded-md flex items-center justify-center transition-colors"
+            >
+              <FaPlus className="mr-1.5" size={14} /> Add Student
+            </button>
+          </div>
         </div>
-      </div>
-      
-      {/* Class Selection and Search */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="class" className="block text-sm font-medium text-black dark:text-black-300 mb-1">
-            Select Class
-          </label>
-          <select
-            id="class"
-            value={selectedClass}
-            onChange={handleClassChange}
-            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2"
-          >
-            <option value="">All Classes</option>
-            {classes.map((cls) => (
-              <option key={cls._id} value={cls._id}>
-                {cls.name || `Year ${cls.year}, Sem ${cls.semester}`}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="search" className="block text-sm font-medium text-black dark:text-black mb-1">
-            Search Students
-          </label>
-          <SearchBar 
-            onSearch={handleSearch}
-            placeholder="Search by name, email, or ID..."
-            className="w-full"
-          />
-        </div>
+        
+        {/* Action buttons - only show when students are selected */}
+        {selectedStudents.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50 p-4 rounded-md">
+            <div className="flex items-center">
+              <span className="text-sm font-medium text-gray-700">
+                {selectedStudents.length} student{selectedStudents.length > 1 ? 's' : ''} selected
+              </span>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handlePreviewNextClass}
+                className="flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-600 rounded-md text-white text-sm font-medium"
+              >
+                <FaUniversity className="mr-2" />
+                Preview Next Class
+              </button>
+              <button
+                onClick={handleUpgradeStudents}
+                disabled={isUpgrading}
+                className={`flex items-center px-3 py-1.5 rounded-md text-white text-sm font-medium ${
+                  isUpgrading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-green-500 hover:bg-green-600'
+                }`}
+              >
+                {isUpgrading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Upgrading...
+                  </>
+                ) : (
+                  <>
+                    <FaUniversity className="mr-2" />
+                    Upgrade Selected
+                  </>
+                )}
+              </button>
+              {selectedClass && (
+                <button
+                  onClick={handleSelectAllInClass}
+                  className="flex items-center px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-md text-white text-sm font-medium"
+                >
+                  <FaUsers className="mr-2" />
+                  Select All in Class
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedStudents([])}
+                className="flex items-center px-3 py-1.5 text-gray-600 hover:text-gray-800 text-sm font-medium"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Students Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+          <p className="text-sm text-gray-600">
+            Showing {filteredStudents.length} of {students.length} students
+            {selectedClass && (
+              <span className="ml-2 text-blue-600">
+                (filtered by class)
+              </span>
+            )}
+            {searchTerm && (
+              <span className="ml-2 text-blue-600">
+                (filtered by: "{searchTerm}")
+              </span>
+            )}
+          </p>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                  Name
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  <input
+                    type="checkbox"
+                    checked={filteredStudents.length > 0 && filteredStudents.every(student => selectedStudents.includes(student._id))}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 text-blue-600 rounded"
+                  />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                  User ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                  Department
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                  Class
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">Name</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">Email</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">Phone</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">User ID</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">Department</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">Class</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {displayStudents.length === 0 ? (
+              {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-900">
+                  <td colSpan="9" className="px-6 py-4 text-center text-gray-900">
                     {loading ? 'Loading...' : 'No students found'}
                   </td>
                 </tr>
               ) : (
-                displayStudents.map((student) => (
+                filteredStudents.map((student) => (
                 <tr key={student._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedStudents.includes(student._id)}
+                      onChange={() => handleStudentSelect(student._id)}
+                      className="h-4 w-4 text-blue-600 rounded"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
@@ -490,7 +795,7 @@ const StudentsPage = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center">
                       <FaChalkboard className="mr-2 text-gray-400" />
-                      {student.class ? `Year ${student.class.year}, Sem ${student.class.semester}` : 'N/A'}
+                      {student.class ? `Year ${student.class.year}, ${student.class.semester === 'first' ? 'First' : 'Second'} Semester` : 'N/A'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -516,6 +821,74 @@ const StudentsPage = () => {
           </table>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {showPreview && nextClassInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Class Upgrade Preview</h2>
+            </div>
+            
+            <div className="p-6">
+              {!nextClassInfo.canUpgrade ? (
+                <div className="text-center py-4">
+                  <div className="text-red-500 font-medium mb-2">Cannot Upgrade</div>
+                  <p className="text-gray-600">{nextClassInfo.reason}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Current Class</h3>
+                    <p className="text-gray-900">
+                      Year {nextClassInfo.currentClass.year}, {nextClassInfo.currentClass.semester === 'first' ? 'First' : 'Second'} Semester
+                    </p>
+                  </div>
+                  
+                  <div className="border-t border-gray-200 pt-4">
+                    <h3 className="text-sm font-medium text-gray-500">Next Class</h3>
+                    <p className="text-gray-900">
+                      Year {nextClassInfo.nextClass.year}, {nextClassInfo.nextClass.semester === 'first' ? 'First' : 'Second'} Semester
+                    </p>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-3 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      {selectedStudents.length > 1 
+                        ? `${selectedStudents.length} students will be upgraded` 
+                        : 'Student will be upgraded'} from Year {nextClassInfo.currentClass.year}, {nextClassInfo.currentClass.semester === 'first' ? 'First' : 'Second'} Semester 
+                      to Year {nextClassInfo.nextClass.year}, {nextClassInfo.nextClass.semester === 'first' ? 'First' : 'Second'} Semester
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3 rounded-b-lg">
+              <button
+                onClick={() => setShowPreview(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              
+              {nextClassInfo.canUpgrade && (
+                <button
+                  onClick={confirmUpgrade}
+                  disabled={isUpgrading}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                    isUpgrading 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-green-600 hover:bg-green-700'
+                  }`}
+                >
+                  {isUpgrading ? 'Upgrading...' : 'Confirm Upgrade'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Student Modal */}
       {isModalOpen && (

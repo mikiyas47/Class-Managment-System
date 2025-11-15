@@ -176,6 +176,10 @@ const BulkUpload = ({ onUpload, entityName, endpoint, token, departmentId = '', 
         setFile(null);
         document.getElementById(`file-upload-${entityName}`).value = '';
       } else {
+        // Handle 403 Forbidden specifically
+        if (response.status === 403) {
+          throw new Error('Invalid or expired token');
+        }
         throw new Error(data.message || `Upload failed with status ${response.status}`);
       }
     } catch (error) {
@@ -189,6 +193,15 @@ const BulkUpload = ({ onUpload, entityName, endpoint, token, departmentId = '', 
         errorMessage = 'Network error. Please check your connection and try again.';
       } else if (error.message.includes('Unexpected token')) {
         errorMessage = 'Invalid server response. The server might be experiencing issues.';
+      } else if (error.message.includes('Invalid or expired token')) {
+        // Handle token expiration - redirect to login
+        errorMessage = 'Your session has expired. Please log in again.';
+        // Remove the expired token
+        localStorage.removeItem('token');
+        // Redirect to login page after a short delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
       }
       
       setMessage({ 
