@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaCheck, FaTimes, FaSearch } from 'react-icons/fa';
 
 const AddStudentsPage = () => {
@@ -24,6 +24,13 @@ const AddStudentsPage = () => {
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // New states for searchable dropdown
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
+  
+  // Ref for student dropdown
+  const studentDropdownRef = useRef(null);
 
   // Fetch add students data
   useEffect(() => {
@@ -165,6 +172,8 @@ const AddStudentsPage = () => {
         ...prev,
         studentId: ''
       }));
+      setStudentSearchTerm('');
+      setShowStudentDropdown(false);
     }
 
     // Fetch courses when class is selected
@@ -186,6 +195,8 @@ const AddStudentsPage = () => {
         classId: '',
         courseId: ''
       }));
+      setStudentSearchTerm('');
+      setShowStudentDropdown(false);
     } else if (!formData.classId) {
       setFormData(prev => ({
         ...prev,
@@ -199,18 +210,34 @@ const AddStudentsPage = () => {
     if (name.includes('.')) {
       // Handle nested properties like retakeSemester.year
       const [parent, child] = name.split('.');
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         [parent]: {
-          ...formData[parent],
+          ...prev[parent],
           [child]: value
         }
-      });
+      }));
     } else {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         [name]: value
-      });
+      }));
+      
+      // Reset dependent fields when parent fields change
+      if (name === 'originalClassId') {
+        setFormData(prev => ({
+          ...prev,
+          studentId: '',
+          classId: '',
+          courseId: ''
+        }));
+        setStudentSearchTerm('');
+      } else if (name === 'classId') {
+        setFormData(prev => ({
+          ...prev,
+          courseId: ''
+        }));
+      }
     }
   };
 
@@ -298,8 +325,7 @@ const AddStudentsPage = () => {
     }
   };
 
-  const openModal = () => {
-    setEditingAddStudent(null);
+  const resetForm = () => {
     setFormData({
       originalClassId: '',
       studentId: '',
@@ -313,37 +339,55 @@ const AddStudentsPage = () => {
     });
     setFilteredStudents([]);
     setFilteredCourses([]);
+    setStudentSearchTerm('');
+    setShowStudentDropdown(false);
+  };
+
+  const openModal = () => {
+    setEditingAddStudent(null);
+    resetForm();
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingAddStudent(null);
-    setFormData({
-      originalClassId: '',
-      studentId: '',
-      classId: '',
-      courseId: '',
-      assignedClassId: '',
-      retakeSemester: {
-        year: new Date().getFullYear(),
-        semester: 'first'
-      }
-    });
-    setFilteredStudents([]);
-    setFilteredCourses([]);
+    resetForm();
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (studentDropdownRef.current && !studentDropdownRef.current.contains(event.target)) {
+        setShowStudentDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Filter add students based on search term
   const filteredAddStudents = addStudents.filter(addStudent => {
     const searchTermLower = searchTerm.toLowerCase();
     return (
-      addStudent.student.name.toLowerCase().includes(searchTermLower) ||
-      addStudent.student.userId.toLowerCase().includes(searchTermLower) ||
-      addStudent.course.subject.toLowerCase().includes(searchTermLower) ||
-      addStudent.course.code.toLowerCase().includes(searchTermLower)
+      (addStudent.student && addStudent.student.name && addStudent.student.name.toLowerCase().includes(searchTermLower)) ||
+      (addStudent.student && addStudent.student.userId && addStudent.student.userId.toLowerCase().includes(searchTermLower)) ||
+      (addStudent.course && addStudent.course.subject && addStudent.course.subject.toLowerCase().includes(searchTermLower)) ||
+      (addStudent.course && addStudent.course.code && addStudent.course.code.toLowerCase().includes(searchTermLower))
     );
   });
+
+  // Filter students based on search term
+  const getFilteredStudents = () => {
+    if (!studentSearchTerm) return filteredStudents;
+    return filteredStudents.filter(student => 
+      (student.name && student.name.toLowerCase().includes(studentSearchTerm.toLowerCase())) ||
+      (student.userId && student.userId.toLowerCase().includes(studentSearchTerm.toLowerCase()))
+    );
+  };
 
   if (loading) {
     return (
@@ -410,19 +454,31 @@ const AddStudentsPage = () => {
                 <tr key={addStudent._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">{addStudent.student.name}</div>
-                      <div className="text-sm text-gray-500">{addStudent.student.userId}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {addStudent.student && addStudent.student.name ? addStudent.student.name : 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {addStudent.student && addStudent.student.userId ? addStudent.student.userId : 'N/A'}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{addStudent.course.subject}</div>
-                    <div className="text-sm text-gray-500">{addStudent.course.code}</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {addStudent.course && addStudent.course.subject ? addStudent.course.subject : 'N/A'}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {addStudent.course && addStudent.course.code ? addStudent.course.code : 'N/A'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    Year {addStudent.originalClass.year} - {addStudent.originalClass.semester} Semester
+                    {addStudent.originalClass ? 
+                      `Year ${addStudent.originalClass.year} - ${addStudent.originalClass.semester} Semester` : 
+                      'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    Year {addStudent.assignedClass.year} - {addStudent.assignedClass.semester} Semester
+                    {addStudent.assignedClass ? 
+                      `Year ${addStudent.assignedClass.year} - ${addStudent.assignedClass.semester} Semester` : 
+                      'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -431,7 +487,7 @@ const AddStudentsPage = () => {
                       addStudent.status === 'completed' ? 'bg-blue-100 text-blue-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {addStudent.status}
+                      {addStudent.status || 'N/A'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -514,26 +570,44 @@ const AddStudentsPage = () => {
                   </div>
                   
                   {/* Student Selection (filtered by original class) */}
-                  <div className="mb-4">
+                  <div className="mb-4 relative">
                     <label htmlFor="studentId" className="block text-sm font-medium text-gray-700 mb-1">Student *</label>
-                    <select
+                    <input
                       id="studentId"
                       name="studentId"
-                      value={formData.studentId}
-                      onChange={handleInputChange}
+                      type="text"
+                      placeholder="Search students..."
+                      value={studentSearchTerm}
+                      onChange={(e) => {
+                        setStudentSearchTerm(e.target.value);
+                        setShowStudentDropdown(true);
+                      }}
                       required
                       disabled={!formData.originalClassId}
                       className={`w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         !formData.originalClassId ? 'bg-gray-100 cursor-not-allowed' : ''
                       }`}
-                    >
-                      <option value="">{formData.originalClassId ? 'Select a student' : 'Select class first'}</option>
-                      {filteredStudents.map(student => (
-                        <option key={student._id} value={student._id}>
-                          {student.name} ({student.userId})
-                        </option>
-                      ))}
-                    </select>
+                    />
+                    {showStudentDropdown && filteredStudents.length > 0 && (
+                      <div className="absolute mt-1 max-h-40 overflow-y-auto w-full bg-white border border-gray-300 rounded-md shadow-lg z-10" ref={studentDropdownRef}>
+                        {getFilteredStudents().map(student => (
+                          <div
+                            key={student._id}
+                            className="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                studentId: student._id
+                              }));
+                              setStudentSearchTerm(`${student.name} (${student.userId})`);
+                              setShowStudentDropdown(false);
+                            }}
+                          >
+                            {student.name} ({student.userId})
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Class Selection for Course */}

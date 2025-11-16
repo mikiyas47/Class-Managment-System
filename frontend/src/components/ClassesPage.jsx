@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaPlus, FaUniversity, FaCalendarAlt, FaListAlt, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaUniversity, FaCalendarAlt, FaListAlt, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
 
 const ClassesPage = ({ user }) => { // Accept user prop
   const [classes, setClasses] = useState([]);
@@ -16,6 +16,10 @@ const ClassesPage = ({ user }) => { // Accept user prop
     year: '',
     semester: 'first'
   });
+
+  // Add new state variables for edit functionality
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState(null);
 
   // Get department name by ID or department object
   const getDepartmentName = (department) => {
@@ -134,6 +138,97 @@ const ClassesPage = ({ user }) => { // Accept user prop
     }));
   };
 
+  // Handle edit class
+  const handleEditClass = async (classData) => {
+    try {
+      // Clear any previous modal errors
+      setModalError(null);
+      
+      // Set the form data to the class being edited
+      setFormData({
+        department: classData.department._id || classData.department,
+        year: classData.year,
+        semester: classData.semester
+      });
+      
+      // Set the editing class and open the edit modal
+      setEditingClass(classData);
+      setIsEditModalOpen(true);
+    } catch (err) {
+      setModalError(err.message);
+    }
+  };
+
+  // Handle update class
+  const handleUpdateClass = async (e) => {
+    e.preventDefault();
+    
+    try {
+      // Clear any previous modal errors
+      setModalError(null);
+      
+      // Validate required fields
+      if (!formData.department || !formData.year || !formData.semester) {
+        throw new Error('All fields are required');
+      }
+
+      const response = await fetch(`http://localhost:5000/api/classes/${editingClass._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update class');
+      }
+
+      // Refresh the classes list
+      await fetchClasses();
+      setIsEditModalOpen(false);
+      setEditingClass(null);
+      // Reset form
+      setFormData({
+        department: user?.department?._id || '',
+        year: '',
+        semester: 'first'
+      });
+    } catch (err) {
+      setModalError(err.message);
+    }
+  };
+
+  // Handle delete class
+  const handleDeleteClass = async (classId) => {
+    if (!window.confirm('Are you sure you want to delete this class? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/classes/${classId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete class');
+      }
+
+      // Refresh the classes list
+      await fetchClasses();
+    } catch (err) {
+      setError(err.message);
+      // Show error for a few seconds
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
   // Add new class
   const handleAddClass = async (e) => {
     e.preventDefault();
@@ -179,6 +274,19 @@ const ClassesPage = ({ user }) => { // Accept user prop
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setModalError(null);
+  };
+
+  // Close edit modal and clear errors
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingClass(null);
+    setModalError(null);
+    // Reset form
+    setFormData({
+      department: user?.department?._id || '',
+      year: '',
+      semester: 'first'
+    });
   };
 
   // Format semester for display
@@ -275,6 +383,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
                   Semester
                 </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -321,29 +432,48 @@ const ClassesPage = ({ user }) => { // Accept user prop
                         </span>
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => handleEditClass(cls)}
+                        className="text-blue-600 hover:text-blue-900 mr-4"
+                        title="Edit"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClass(cls._id)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete"
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
+
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add Class Modal */}
-      {isModalOpen && (
+      {/* Add/Edit Class Modal */}
+      {(isModalOpen || isEditModalOpen) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Add New Class</h2>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                {isEditModalOpen ? 'Edit Class' : 'Add New Class'}
+              </h2>
               <button 
-                onClick={handleCloseModal}
+                onClick={isEditModalOpen ? handleCloseEditModal : handleCloseModal}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <FaTimes />
               </button>
             </div>
             
-            <form onSubmit={handleAddClass} className="px-6 py-4">
+            <form onSubmit={isEditModalOpen ? handleUpdateClass : handleAddClass} className="px-6 py-4">
               {modalError && (
                 <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
                   {modalError}
@@ -385,6 +515,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
                     <option value="2">2nd Year</option>
                     <option value="3">3rd Year</option>
                     <option value="4">4th Year</option>
+                    <option value="5">5th Year</option>
+                    <option value="6">6th Year</option>
+                    <option value="7">7th Year</option>
                   </select>
                 </div>
                 
@@ -408,7 +541,7 @@ const ClassesPage = ({ user }) => { // Accept user prop
               <div className="mt-6 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={handleCloseModal}
+                  onClick={isEditModalOpen ? handleCloseEditModal : handleCloseModal}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 rounded-md transition-colors"
                 >
                   Cancel
@@ -417,7 +550,7 @@ const ClassesPage = ({ user }) => { // Accept user prop
                   type="submit"
                   className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors"
                 >
-                  Add Class
+                  {isEditModalOpen ? 'Update Class' : 'Add Class'}
                 </button>
               </div>
             </form>

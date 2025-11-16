@@ -590,4 +590,368 @@ router.post('/bulk-upload', authenticateToken, async (req, res) => {
   }
 });
 
+// Get next class information for a student
+router.post('/next-class', authenticateToken, async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    
+    // Validate required fields
+    if (!studentId) {
+      return res.status(400).json({
+        message: 'Student ID is required',
+        status: 'error'
+      });
+    }
+    
+    // Find the student and populate their class information
+    const student = await Student.findById(studentId).populate('class');
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+    
+    // Get current class information
+    const currentClass = student.class;
+    
+    if (!currentClass) {
+      return res.status(400).json({
+        message: 'Student is not assigned to a class',
+        status: 'error'
+      });
+    }
+    
+    let nextClass = null;
+    let nextClassName = '';
+    
+    // Determine the next class based on current class
+    if (currentClass.semester === 'first') {
+      // If currently in first semester, move to second semester of same year
+      nextClass = await Class.findOne({
+        department: currentClass.department,
+        year: currentClass.year,
+        semester: 'second'
+      });
+      nextClassName = `Year ${currentClass.year}, Second Semester`;
+    } else {
+      // If currently in second semester, move to first semester of next year
+      nextClass = await Class.findOne({
+        department: currentClass.department,
+        year: currentClass.year + 1,
+        semester: 'first'
+      });
+      nextClassName = `Year ${currentClass.year + 1}, First Semester`;
+    }
+    
+    // If next class doesn't exist, return an error
+    if (!nextClass) {
+      return res.status(404).json({
+        message: `Next class (${nextClassName}) not found. Please create the class first.`,
+        status: 'error',
+        data: {
+          currentClass: {
+            _id: currentClass._id,
+            year: currentClass.year,
+            semester: currentClass.semester
+          }
+        }
+      });
+    }
+    
+    res.json({
+      message: 'Next class information retrieved successfully',
+      data: {
+        currentClass: {
+          _id: currentClass._id,
+          year: currentClass.year,
+          semester: currentClass.semester
+        },
+        nextClass: {
+          _id: nextClass._id,
+          year: nextClass.year,
+          semester: nextClass.semester
+        },
+        studentId: student._id
+      },
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error getting next class information:', error);
+    res.status(500).json({
+      message: 'Error retrieving next class information',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Upgrade students to next class
+router.post('/upgrade-class', authenticateToken, async (req, res) => {
+  try {
+    const { studentIds } = req.body;
+    
+    // Validate required fields
+    if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({
+        message: 'Student IDs are required',
+        status: 'error'
+      });
+    }
+    
+    const updatedStudents = [];
+    const errors = [];
+    
+    // Process each student
+    for (const studentId of studentIds) {
+      try {
+        // Find the student and populate their class information
+        const student = await Student.findById(studentId).populate('class');
+        
+        if (!student) {
+          errors.push(`Student with ID ${studentId} not found`);
+          continue;
+        }
+        
+        // Get current class information
+        const currentClass = student.class;
+        
+        if (!currentClass) {
+          errors.push(`Student ${student.name} is not assigned to a class`);
+          continue;
+        }
+        
+        let nextClass = null;
+        
+        // Determine the next class based on current class
+        if (currentClass.semester === 'first') {
+          // If currently in first semester, move to second semester of same year
+          nextClass = await Class.findOne({
+            department: currentClass.department,
+            year: currentClass.year,
+            semester: 'second'
+          });
+        } else {
+          // If currently in second semester, move to first semester of next year
+          nextClass = await Class.findOne({
+            department: currentClass.department,
+            year: currentClass.year + 1,
+            semester: 'first'
+          });
+        }
+        
+        // If next class doesn't exist, add to errors
+        if (!nextClass) {
+          const nextClassName = currentClass.semester === 'first' 
+            ? `Year ${currentClass.year}, Second Semester` 
+            : `Year ${currentClass.year + 1}, First Semester`;
+          errors.push(`Next class (${nextClassName}) not found for student ${student.name}. Please create the class first.`);
+          continue;
+        }
+        
+        // Update student's class
+        student.class = nextClass._id;
+        await student.save();
+        
+        // Add to updated students list
+        updatedStudents.push({
+          studentId: student._id,
+          name: student.name,
+          previousClass: {
+            _id: currentClass._id,
+            year: currentClass.year,
+            semester: currentClass.semester
+          },
+          newClass: {
+            _id: nextClass._id,
+            year: nextClass.year,
+            semester: nextClass.semester
+          }
+        });
+      } catch (studentError) {
+        errors.push(`Error processing student ${studentId}: ${studentError.message}`);
+      }
+    }
+    
+    res.json({
+      message: `${updatedStudents.length} students upgraded successfully`,
+      data: {
+        updatedStudents,
+        errors
+      },
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error upgrading students:', error);
+    res.status(500).json({
+      message: 'Error upgrading students',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Get assignments for student's enrolled courses
+router.get('/:id/assignments', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Import required models
+    const AddStudent = (await import('../AddStudent.js')).default;
+    const Course = (await import('../Course.js')).default;
+    const Assignment = (await import('../Assignment.js')).default;
+
+    // Get the student
+    const student = await Student.findById(id).populate('class');
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+
+    // Get regular courses for the student's class
+    const regularCourses = await Course.find({ class: student.class._id });
+    const regularCourseIds = regularCourses.map(course => course._id);
+    
+    // Get added courses for this student (including retake courses)
+    // Include both 'enrolled' and 'pending' status records
+    const addedCoursesRecords = await AddStudent.find({ 
+      student: id, 
+      status: { $in: ['enrolled', 'pending'] } 
+    }).populate('course');
+    
+    const addedCourseIds = addedCoursesRecords.map(record => record.course._id);
+    
+    // Combine all course IDs
+    const allCourseIds = [...regularCourseIds, ...addedCourseIds];
+    
+    // If student has no courses, return empty array
+    if (allCourseIds.length === 0) {
+      return res.json({
+        message: 'Assignments retrieved successfully',
+        data: [],
+        count: 0,
+        status: 'success'
+      });
+    }
+    
+    // Get classes for all courses
+    const coursesWithClasses = await Course.find({
+      _id: { $in: allCourseIds }
+    }).select('class');
+    
+    const classIds = coursesWithClasses.map(course => course.class);
+    
+    // Get assignments for these classes
+    const assignments = await Assignment.find({
+      class: { $in: classIds }
+    }).populate('class').populate('teacher').sort({ createdAt: -1 });
+    
+    // For each assignment, find the corresponding course
+    for (let i = 0; i < assignments.length; i++) {
+      const assignment = assignments[i];
+      // Find courses that belong to the same class as this assignment and populate all fields
+      const courseForAssignment = await Course.findOne({ class: assignment.class._id || assignment.class })
+        .populate('teacher')
+        .populate('department')
+        .populate('class');
+      if (courseForAssignment) {
+        // Add course information to the assignment
+        assignment.course = courseForAssignment;
+      }
+    }
+
+    res.json({
+      message: 'Assignments retrieved successfully',
+      data: assignments,
+      count: assignments.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching student assignments:', error);
+    res.status(500).json({
+      message: 'Error retrieving assignments',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Get announcements for student's enrolled courses
+router.get('/:id/announcements', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Import required models
+    const AddStudent = (await import('../AddStudent.js')).default;
+    const Course = (await import('../Course.js')).default;
+    const Announcement = (await import('../Announcement.js')).default;
+
+    // Get the student
+    const student = await Student.findById(id).populate('class');
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+
+    // Get regular courses for the student's class
+    const regularCourses = await Course.find({ class: student.class._id });
+    const regularCourseIds = regularCourses.map(course => course._id);
+    
+    // Get added courses for this student (including retake courses)
+    // Include both 'enrolled' and 'pending' status records
+    const addedCoursesRecords = await AddStudent.find({ 
+      student: id, 
+      status: { $in: ['enrolled', 'pending'] } 
+    }).populate('course');
+    
+    const addedCourseIds = addedCoursesRecords.map(record => record.course._id);
+    
+    // Combine all course IDs
+    const allCourseIds = [...regularCourseIds, ...addedCourseIds];
+    
+    // If student has no courses, return empty array
+    if (allCourseIds.length === 0) {
+      return res.json({
+        message: 'Announcements retrieved successfully',
+        data: [],
+        count: 0,
+        status: 'success'
+      });
+    }
+    
+    // Get classes for all courses
+    const coursesWithClasses = await Course.find({
+      _id: { $in: allCourseIds }
+    }).select('class');
+    
+    const classIds = coursesWithClasses.map(course => course.class);
+    
+    // Get announcements for these classes
+    const announcements = await Announcement.find({
+      class: { $in: classIds }
+    }).populate('class').populate('teacher').sort({ createdAt: -1 });
+
+    res.json({
+      message: 'Announcements retrieved successfully',
+      data: announcements,
+      count: announcements.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching student announcements:', error);
+    res.status(500).json({
+      message: 'Error retrieving announcements',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 export default router;

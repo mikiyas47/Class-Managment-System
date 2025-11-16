@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaPlus, FaBook, FaChalkboardTeacher, FaUniversity, FaCalendarAlt, FaSearch, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
 
 const CoursesPage = () => {
@@ -15,6 +15,12 @@ const CoursesPage = () => {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [editingCourse, setEditingCourse] = useState(null);
   
+  // Teacher search states
+  const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
+  const [isTeacherDropdownOpen, setIsTeacherDropdownOpen] = useState(false);
+  
+  const teacherSearchRef = useRef(null);
+
   const [formData, setFormData] = useState({
     subject: '',
     code: '',
@@ -102,6 +108,35 @@ const CoursesPage = () => {
     return 'N/A';
   };
 
+  // Filter teachers based on search term
+  const filteredTeachers = teachers.filter(teacher => 
+    teacher.name.toLowerCase().includes(teacherSearchTerm.toLowerCase())
+  );
+
+  // Handle teacher selection
+  const handleTeacherSelect = (teacherId) => {
+    setFormData({
+      ...formData,
+      teacher: teacherId
+    });
+    setIsTeacherDropdownOpen(false);
+    setTeacherSearchTerm('');
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (teacherSearchRef.current && !teacherSearchRef.current.contains(event.target)) {
+        setIsTeacherDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Fetch courses
   const fetchCourses = async () => {
     try {
@@ -150,6 +185,7 @@ const CoursesPage = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
+      
       
       if (response.ok) {
         const data = await response.json();
@@ -227,6 +263,15 @@ const CoursesPage = () => {
       teacher: course.teacher?._id || '',
       class: course.class?._id || ''
     });
+    // Set teacher search term to the selected teacher's name
+    if (course.teacher?._id) {
+      const selectedTeacher = teachers.find(t => t._id === course.teacher._id);
+      if (selectedTeacher) {
+        setTeacherSearchTerm(selectedTeacher.name);
+      }
+    } else {
+      setTeacherSearchTerm('');
+    }
     setIsModalOpen(true);
   };
 
@@ -265,6 +310,9 @@ const CoursesPage = () => {
       teacher: '',
       class: ''
     });
+    // Reset teacher search states
+    setTeacherSearchTerm('');
+    setIsTeacherDropdownOpen(false);
   };
 
   // Handle add course button click
@@ -593,26 +641,44 @@ const CoursesPage = () => {
                   />
                 </div>
                 
-                <div>
+                <div ref={teacherSearchRef}>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Teacher *
                   </label>
-                  <select
-                    name="teacher"
-                    value={formData.teacher}
-                    onChange={handleInputChange}
-                    className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Select Teacher</option>
-                    {teachers.map(teacher => (
-                      <option key={teacher._id} value={teacher._id}>
-                        {teacher.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={teacherSearchTerm || (formData.teacher ? teachers.find(t => t._id === formData.teacher)?.name || '' : '')}
+                      onChange={(e) => {
+                        setTeacherSearchTerm(e.target.value);
+                        setIsTeacherDropdownOpen(true);
+                      }}
+                      onClick={() => setIsTeacherDropdownOpen(true)}
+                      placeholder="Search and select teacher..."
+                      className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    {isTeacherDropdownOpen && (
+                      <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg rounded-md max-h-60 overflow-auto">
+                        {filteredTeachers.length === 0 ? (
+                          <div className="px-4 py-2 text-gray-500 dark:text-gray-400">No teachers found</div>
+                        ) : (
+                          filteredTeachers.map(teacher => (
+                            <div
+                              key={teacher._id}
+                              className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-900 dark:text-white"
+                              onClick={() => handleTeacherSelect(teacher._id)}
+                            >
+                              {teacher.name}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <input type="hidden" name="teacher" value={formData.teacher} />
                 </div>
-                
+
                 {/* Display selected class information instead of dropdowns */}
                 <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

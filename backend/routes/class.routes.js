@@ -136,9 +136,9 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     
     // Validate year range
-    if (year < 1 || year > 4) {
+    if (year < 1 || year > 7) {
       return res.status(400).json({
-        message: 'Year must be between 1 and 4',
+        message: 'Year must be between 1 and 7',
         status: 'error'
       });
     }
@@ -242,9 +242,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
     
     // Validate year range
-    if (year < 1 || year > 4) {
+    if (year < 1 || year > 7) {
       return res.status(400).json({
-        message: 'Year must be between 1 and 4',
+        message: 'Year must be between 1 and 7',
         status: 'error'
       });
     }

@@ -285,7 +285,7 @@ const StudentsPage = () => {
         userId: formData.userId,
         email: formData.email,
         phoneNo: formData.phoneNo,
-        department: formData.department || selectedDepartmentId, // Use form data if available, otherwise use selected
+        department: formData.department || getDepartmentIdFromClass(selectedClass), // Use form data if available, otherwise derive from selected class
         class: formData.class || selectedClass // Use form data if available, otherwise use selected
       };
       

@@ -29,41 +29,61 @@ const MyClassesPage = ({ user }) => {
 
       const data = await response.json();
       
-      // Fetch student count for each class
-      const coursesWithStudentCount = await Promise.all(
+      // Fetch student count and assignment count for each class
+      const coursesWithStats = await Promise.all(
         data.data.map(async (course) => {
           try {
             const classId = course.class._id || course.class;
-            const studentResponse = await fetch(`http://localhost:5000/api/students/class/${classId}`, {
+            
+            // Fetch student count for the class
+            const studentResponse = await fetch(`http://localhost:5000/api/students?class=${classId}`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
               }
             });
             
+            let studentCount = 0;
             if (studentResponse.ok) {
               const studentData = await studentResponse.json();
-              return {
-                ...course,
-                studentCount: studentData.count
-              };
-            } else {
-              return {
-                ...course,
-                studentCount: 0
-              };
+              studentCount = studentData.count || studentData.data?.length || 0;
             }
-          } catch (err) {
-            console.error('Error fetching student count for class:', err);
+            
+            // Fetch assignment count for the class (filtered by this teacher)
+            const assignmentResponse = await fetch(`http://localhost:5000/api/assignments`, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            let assignmentCount = 0;
+            if (assignmentResponse.ok) {
+              const assignmentData = await assignmentResponse.json();
+              // Filter assignments by class and teacher
+              assignmentCount = assignmentData.data?.filter(assignment => 
+                (assignment.class._id || assignment.class) === classId && 
+                (assignment.teacher._id || assignment.teacher) === user._id
+              ).length || 0;
+            }
+            
             return {
               ...course,
-              studentCount: 0
+              studentCount: studentCount,
+              assignmentCount: assignmentCount
+            };
+          } catch (err) {
+            console.error('Error fetching stats for class:', err);
+            return {
+              ...course,
+              studentCount: 0,
+              assignmentCount: 0
             };
           }
         })
       );
       
-      setClasses(coursesWithStudentCount);
+      setClasses(coursesWithStats);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -72,12 +92,13 @@ const MyClassesPage = ({ user }) => {
   };
 
   const getClassStats = (course) => {
-    // Use actual student count from backend
+    // Use actual student count and assignment count from backend
     const studentCount = course.studentCount || 0;
+    const assignmentCount = course.assignmentCount || 0;
     // Keep mock data for other stats for now
     return {
       studentCount: studentCount,
-      assignments: Math.floor(Math.random() * 10) + 1,
+      assignments: assignmentCount,
       upcomingEvents: Math.floor(Math.random() * 5)
     };
   };

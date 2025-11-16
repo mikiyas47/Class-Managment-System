@@ -10,7 +10,7 @@ const classSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 1,
-    max: 4
+    max: 7
   },
   semester: {
     type: String,

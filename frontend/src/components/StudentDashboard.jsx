@@ -108,7 +108,7 @@ const StudentDashboard = ({ user, onLogout }) => {
         const studentId = user._id;
 
         // Fetch all student data in parallel
-        // Note: We're using the general endpoints that already handle student-specific filtering
+        // Note: We're using the new student-specific endpoints that filter by enrolled courses
         const [
           coursesRes,
           examsRes,
@@ -119,16 +119,16 @@ const StudentDashboard = ({ user, onLogout }) => {
           fetch(`http://localhost:5000/api/students/${studentId}/courses`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/exams`, {
+          fetch(`http://localhost:5000/api/exams/student/${studentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/assignments`, {
+          fetch(`http://localhost:5000/api/students/${studentId}/assignments`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/results`, {
+          fetch(`http://localhost:5000/api/results/student/${studentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/announcements`, {
+          fetch(`http://localhost:5000/api/students/${studentId}/announcements`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);
@@ -153,6 +153,8 @@ const StudentDashboard = ({ user, onLogout }) => {
 
         if (resultsData.status === 'success') {
           setResults(resultsData.data);
+        } else {
+          console.log('Error fetching results:', resultsData);
         }
 
         if (announcementsData.status === 'success') {
@@ -173,8 +175,9 @@ const StudentDashboard = ({ user, onLogout }) => {
   const fetchExams = async () => {
     try {
       const token = localStorage.getItem('token');
+      const studentId = user._id;
 
-      const examsRes = await fetch(`http://localhost:5000/api/exams`, {
+      const examsRes = await fetch(`http://localhost:5000/api/exams/student/${studentId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -509,6 +512,7 @@ const StudentDashboard = ({ user, onLogout }) => {
                       </td>
                     </tr>
                   ))}
+
                   {results.length === 0 && (
                     <tr>
                       <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">

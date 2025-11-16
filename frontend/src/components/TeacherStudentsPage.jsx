@@ -44,14 +44,14 @@ const TeacherStudentsPage = ({ user }) => {
     }
   };
 
-  // Fetch students for selected class
+  // Fetch students for a specific class
   const fetchStudentsForClass = async (classId) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       
       // Fetch students for the selected class
-      const response = await fetch(`http://localhost:5000/api/students/class/${classId}`, {
+      const response = await fetch(`http://localhost:5000/api/students?class=${classId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

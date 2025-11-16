@@ -1,5 +1,6 @@
 import express from 'express';
 import Result from '../Result.js';
+import Student from '../Student.js';
 import StudentExam from '../StudentExam.js';
 import Exam from '../Exam.js';
 import Course from '../Course.js';
@@ -57,6 +58,113 @@ router.get('/', authenticateToken, async (req, res) => {
     res.status(500).json({
       message: 'Error retrieving results',
       error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Get results for a specific student (filtered by enrolled courses)
+router.get('/student/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id: studentId } = req.params;
+
+    // Import required models
+    const AddStudent = (await import('../AddStudent.js')).default;
+
+    // Get the student
+    const student = await Student.findById(studentId).populate('class');
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+
+    // Get regular courses for the student's class
+    let regularCourses = [];
+    try {
+      regularCourses = await Course.find({ class: student.class._id || student.class });
+    } catch (courseError) {
+      console.error('Error fetching regular courses:', courseError);
+      // Return empty array if there's an error fetching courses
+      regularCourses = [];
+    }
+    
+    
+    const regularCourseIds = regularCourses.map(course => course._id);
+
+    // Get added courses for this student (including retake courses)
+    // Include both 'enrolled' and 'pending' status records
+    let addedCoursesRecords = [];
+    try {
+      addedCoursesRecords = await AddStudent.find({ 
+        student: studentId, 
+        status: { $in: ['enrolled', 'pending'] } 
+      }).populate('course');
+    } catch (addStudentError) {
+      console.error('Error fetching added courses records:', addStudentError);
+      // Return empty array if there's an error fetching added courses
+      addedCoursesRecords = [];
+    }
+
+    const addedCourseIds = addedCoursesRecords
+      .filter(record => record.course) // Filter out records without a course
+      .map(record => record.course._id);
+
+    // Combine all course IDs
+    const allCourseIds = [...regularCourseIds, ...addedCourseIds];
+    
+    // If student has no courses, return empty array
+    if (allCourseIds.length === 0) {
+      return res.json({
+        message: 'Results retrieved successfully',
+        data: [],
+        count: 0,
+        status: 'success'
+      });
+    }
+
+    // Get results for these courses and this student
+    // Only return results that are visible to students
+    let results = [];
+    try {
+      results = await Result.find({
+        student: studentId,
+        course: { $in: allCourseIds },
+        isVisibleToStudent: true  // Only fetch results that are made visible by teachers
+      })
+        .populate({
+          path: 'student',
+          select: 'name userId email class department'
+        })
+        .populate({
+          path: 'course',
+          select: 'subject code teacher department class'
+        })
+        .populate({
+          path: 'class',
+          select: 'year semester'
+        })
+        .sort({ createdAt: -1 });
+    } catch (resultError) {
+      console.error('Error fetching results:', resultError);
+      // Return empty array if there's an error fetching results
+      results = [];
+    }
+
+    res.json({
+      message: 'Results retrieved successfully',
+      data: results,
+      count: results.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching student results:', error);
+    res.status(500).json({
+      message: 'Error retrieving results',
+      error: error.message,
+      stack: error.stack, // Include stack trace for debugging
       status: 'error'
     });
   }

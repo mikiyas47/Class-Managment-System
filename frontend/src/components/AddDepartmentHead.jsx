@@ -197,7 +197,15 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
   const getAvailableDepartments = () => {
     if (editingDepartmentHead) {
       // When editing, include the current department of the head being edited
-      return departments;
+      // and exclude departments assigned to other department heads
+      const currentDepartmentId = editingDepartmentHead.department._id || editingDepartmentHead.department;
+      return departments.filter(dept => 
+        dept._id === currentDepartmentId || 
+        !departmentHeads.some(head => 
+          (head.department._id === dept._id || head.department === dept._id) && 
+          head._id !== editingDepartmentHead._id
+        )
+      );
     }
     
     // When creating, only show departments without a head

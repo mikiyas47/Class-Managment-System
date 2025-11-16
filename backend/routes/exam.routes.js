@@ -498,4 +498,90 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get exams for a specific student (filtered by enrolled courses)
+router.get('/student/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id: studentId } = req.params;
+
+    // Import required models
+    const Student = (await import('../Student.js')).default;
+    const AddStudent = (await import('../AddStudent.js')).default;
+    const Course = (await import('../Course.js')).default;
+
+    // Get the student
+    const student = await Student.findById(studentId).populate('class');
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+
+    // Get regular courses for the student's class
+    const regularCourses = await Course.find({ class: student.class._id });
+    const regularCourseIds = regularCourses.map(course => course._id);
+    
+    // Get added courses for this student (including retake courses)
+    // Include both 'enrolled' and 'pending' status records
+    const addedCoursesRecords = await AddStudent.find({ 
+      student: studentId, 
+      status: { $in: ['enrolled', 'pending'] } 
+    }).populate('course');
+    
+    const addedCourseIds = addedCoursesRecords.map(record => record.course._id);
+    
+    // Combine all course IDs
+    const allCourseIds = [...regularCourseIds, ...addedCourseIds];
+    
+    // If student has no courses, return empty array
+    if (allCourseIds.length === 0) {
+      return res.json({
+        message: 'Exams retrieved successfully',
+        data: [],
+        count: 0,
+        status: 'success'
+      });
+    }
+    
+    // Get exams for these courses with time-based filtering for students
+    const now = new Date();
+    let exams = await Exam.find({
+      course: { $in: allCourseIds },
+      startTime: { $lte: now }
+    })
+      .populate('course', 'subject')
+      .populate('class')
+      .populate('teacher')
+      .sort({ createdAt: -1 });
+    
+    // Filter exams that haven't ended yet
+    const filteredExams = exams.filter(exam => {
+      // Calculate end time: startTime + duration (in minutes)
+      const endTime = new Date(exam.startTime.getTime() + exam.duration * 60000);
+      return now < endTime;
+    });
+    
+    // Also filter to only show exams that have started (with a small buffer for timing)
+    const fiveSecondsAgo = new Date(now.getTime() - 5000);
+    const finalExams = filteredExams.filter(exam => {
+      return exam.startTime <= now || exam.startTime <= fiveSecondsAgo;
+    });
+
+    res.json({
+      message: 'Exams retrieved successfully',
+      data: finalExams,
+      count: finalExams.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching student exams:', error);
+    res.status(500).json({
+      message: 'Error retrieving exams',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 export default router;
