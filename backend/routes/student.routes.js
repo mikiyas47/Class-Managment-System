@@ -792,6 +792,47 @@ router.post('/upgrade-class', authenticateToken, async (req, res) => {
   }
 });
 
+// Get schedules for a specific student
+router.get('/:id/schedules', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get student with their class information
+    const student = await Student.findById(id).populate('class');
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+    
+    // Import Schedule model
+    const Schedule = (await import('../Schedule.js')).default;
+    
+    // Find schedules for the student's class
+    const schedules = await Schedule.find({ class: student.class._id })
+      .populate('class')
+      .populate('course')
+      .populate('department')
+      .sort({ dayOfWeek: 1, startTime: 1 });
+    
+    res.json({
+      message: 'Schedules retrieved successfully',
+      data: schedules,
+      count: schedules.length,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error fetching student schedules:', error);
+    res.status(500).json({
+      message: 'Error retrieving schedules',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Get assignments for student's enrolled courses
 router.get('/:id/assignments', authenticateToken, async (req, res) => {
   try {

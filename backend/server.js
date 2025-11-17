@@ -334,6 +334,7 @@ import addStudentRoutes from './routes/addStudent.routes.js';
 import resultRoutes from './routes/result.routes.js';
 import studentExamRoutes from './routes/studentExam.routes.js';
 import answerRoutes from './routes/answer.routes.js';
+import scheduleRoutes from './routes/schedule.routes.js';
 
 app.get("/", (req, res) => {
   res.send("Backend is running...");
@@ -356,6 +357,7 @@ app.use('/api/add-students', addStudentRoutes);
 app.use('/api/results', resultRoutes);
 app.use('/api/student-exams', studentExamRoutes);
 app.use('/api/answers', answerRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // Add backward compatibility for login endpoint
 app.post('/api/login', (req, res) => {

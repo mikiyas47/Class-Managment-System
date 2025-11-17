@@ -4,6 +4,7 @@ import StudentSidebar from './StudentSidebar';
 import { FaBook, FaTasks, FaClipboardList, FaChartBar, FaBell, FaBars, FaDownload } from 'react-icons/fa';
 import io from 'socket.io-client';
 import SettingsPage from './SettingsPage';
+import StudentScheduleView from './StudentScheduleView';
 
 // ExamRow component for real-time countdown
 const ExamRow = ({ exam, examEndTime, navigate }) => {
@@ -553,6 +554,8 @@ const StudentDashboard = ({ user, onLogout }) => {
         );
       case 'settings':
         return <SettingsPage user={user} onLogout={onLogout} />;
+      case 'schedule':
+        return <StudentScheduleView studentId={user._id} token={localStorage.getItem('token')} />;
       default:
         return <div>Page not found</div>;
     }
@@ -603,6 +606,7 @@ const StudentDashboard = ({ user, onLogout }) => {
               <h1 className="text-xl font-semibold text-gray-800">
                 {activeTab === 'dashboard' ? 'Dashboard' : 
                  activeTab === 'courses' ? 'My Courses' : 
+                 activeTab === 'schedule' ? 'My Schedule' : 
                  activeTab === 'exams' ? 'Exams' : 
                  activeTab === 'assignments' ? 'Assignments' : 
                  activeTab === 'results' ? 'My Results' : 
