@@ -863,11 +863,20 @@ router.get('/:id/assignments', authenticateToken, async (req, res) => {
         assignment.course = courseForAssignment;
       }
     }
+    
+    // Convert assignments to plain objects to ensure course data is included
+    const assignmentsWithCourse = assignments.map(assignment => {
+      const assignmentObj = assignment.toObject ? assignment.toObject() : assignment;
+      if (assignment.course) {
+        assignmentObj.course = assignment.course.toObject ? assignment.course.toObject() : assignment.course;
+      }
+      return assignmentObj;
+    });
 
     res.json({
       message: 'Assignments retrieved successfully',
-      data: assignments,
-      count: assignments.length,
+      data: assignmentsWithCourse,
+      count: assignmentsWithCourse.length,
       status: 'success'
     });
   } catch (error) {

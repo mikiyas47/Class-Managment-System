@@ -6,6 +6,7 @@ const CoursesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalError, setModalError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -119,8 +120,12 @@ const CoursesPage = () => {
       ...formData,
       teacher: teacherId
     });
+    // Set the search term to the selected teacher's name
+    const selectedTeacher = teachers.find(t => t._id === teacherId);
+    if (selectedTeacher) {
+      setTeacherSearchTerm(selectedTeacher.name);
+    }
     setIsTeacherDropdownOpen(false);
-    setTeacherSearchTerm('');
   };
 
   // Close dropdown when clicking outside
@@ -268,6 +273,8 @@ const CoursesPage = () => {
       const selectedTeacher = teachers.find(t => t._id === course.teacher._id);
       if (selectedTeacher) {
         setTeacherSearchTerm(selectedTeacher.name);
+      } else {
+        setTeacherSearchTerm('');
       }
     } else {
       setTeacherSearchTerm('');
@@ -302,6 +309,7 @@ const CoursesPage = () => {
     setIsModalOpen(false);
     setEditingCourse(null);
     setModalError(null);
+    setSuccessMessage(null);
     setFormData({
       subject: '',
       code: '',
@@ -332,6 +340,7 @@ const CoursesPage = () => {
       // Clear any previous modal errors
       setModalError(null);
       setError(null);
+      setSuccessMessage(null);
       
       // Validate required fields (excluding department and class since they're pre-selected)
       const requiredFields = ['subject', 'code', 'crh', 'teacher'];
@@ -377,9 +386,16 @@ const CoursesPage = () => {
         throw new Error(errorData.message || `Failed to ${editingCourse ? 'update' : 'add'} course`);
       }
 
+      // Show success message
+      setSuccessMessage(editingCourse ? 'Course updated successfully!' : 'Course added successfully!');
+      
       // Refresh the courses list
       await fetchCourses();
-      handleModalClose();
+      
+      // Close modal after a short delay to show the success message
+      setTimeout(() => {
+        handleModalClose();
+      }, 1500);
     } catch (err) {
       setModalError(err.message);
       // Keep the modal open to show the error
@@ -592,7 +608,12 @@ const CoursesPage = () => {
                 <p>{modalError}</p>
               </div>
             )}
-            
+            {successMessage && (
+              <div className="mx-6 mt-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-3 rounded" role="alert">
+                <p className="font-bold">Success</p>
+                <p>{successMessage}</p>
+              </div>
+            )}
             <form onSubmit={handleAddCourse} className="px-6 py-4">
               <div className="space-y-4">
                 <div>
@@ -648,7 +669,7 @@ const CoursesPage = () => {
                   <div className="relative">
                     <input
                       type="text"
-                      value={teacherSearchTerm || (formData.teacher ? teachers.find(t => t._id === formData.teacher)?.name || '' : '')}
+                      value={teacherSearchTerm}
                       onChange={(e) => {
                         setTeacherSearchTerm(e.target.value);
                         setIsTeacherDropdownOpen(true);
