@@ -1,6 +1,9 @@
 // API utility functions for communicating with the backend
 
-const API_BASE_URL = 'http://localhost:5000';
+// For production, replace with your actual Render backend URL
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://your-render-app-url.onrender.com' 
+  : 'http://localhost:5000';
 
 export const api = {
   // Fetch basic backend status
