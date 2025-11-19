@@ -1,6 +1,6 @@
 // For production, replace with your actual Render backend URL
 const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-render-app-url.onrender.com/api' 
+  ? 'https://YOUR_RENDER_APP_URL.onrender.com/api' 
   : 'http://localhost:5000/api';
 
 export const verifyToken = async (token) => {

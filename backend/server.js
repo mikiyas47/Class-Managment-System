@@ -207,7 +207,8 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
-    'http://localhost:5175'
+    'http://localhost:5175',
+    'https://YOUR_NETLIFY_SITE_URL.netlify.app'  // Add your Netlify URL here
   ];
   
   const origin = req.headers.origin;
