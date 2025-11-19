@@ -317,6 +317,37 @@ const connectDB = async () => {
 
 connectDB();
 
+// Function to create default admin user
+const createDefaultAdmin = async () => {
+  try {
+    // Import Admin model
+    const Admin = (await import('./Admin.js')).default;
+    
+    // Check if admin already exists
+    const existingAdmin = await Admin.findOne({ email: 'mikishemels@gmail.com' });
+    
+    if (!existingAdmin) {
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash('miki1234', salt);
+      
+      // Create admin user
+      const admin = new Admin({
+        name: 'Mikishe Melaku',
+        email: 'mikishemels@gmail.com',
+        password: hashedPassword
+      });
+      
+      await admin.save();
+      console.log('✅ Default admin user created successfully');
+    } else {
+      console.log('ℹ️  Default admin user already exists');
+    }
+  } catch (error) {
+    console.error('❌ Error creating default admin user:', error);
+  }
+};
+
 // Import routes
 import departmentRoutes from './routes/department.routes.js';
 import classRoutes from './routes/class.routes.js';
@@ -454,5 +485,8 @@ const getUserFromToken = async (tokenPayload) => {
   }
 };
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Create default admin user and then start server
+createDefaultAdmin().then(() => {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+});
