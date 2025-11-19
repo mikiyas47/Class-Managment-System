@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import './Login.css';
 
+// Import the API base URL
+import { API_BASE_URL } from './api';
+
 const Login = ({ onLoginSuccess }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -20,8 +23,8 @@ const Login = ({ onLoginSuccess }) => {
     setError(null);
     
     try {
-      // Use the unified login endpoint
-      const endpoint = 'http://localhost:5000/api/login';
+      // Use the unified login endpoint with the correct API base URL
+      const endpoint = `${API_BASE_URL}/api/login`;
       
       // Call backend API for authentication
       const response = await fetch(endpoint, {
