@@ -208,7 +208,7 @@ app.use((req, res, next) => {
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
-    'https://YOUR_VERCEL_SITE_URL.vercel.app'  // Add your Vercel URL here
+    'https://class-managment-system.vercel.app'  // Your Vercel frontend URL
   ];
   
   const origin = req.headers.origin;

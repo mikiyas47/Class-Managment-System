@@ -2,7 +2,7 @@
 
 // For production, replace with your actual Render backend URL
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://YOUR_RENDER_APP_URL.onrender.com' 
+  ? 'https://class-managment-system.onrender.com' 
   : 'http://localhost:5000';
 
 export const api = {
