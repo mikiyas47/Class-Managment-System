@@ -407,6 +407,57 @@ app.get("/test-admin", async (req, res) => {
   }
 });
 
+// Add a test login endpoint
+app.post("/test-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log('Test login attempt with:', { email, password });
+    
+    // Import Admin model
+    const Admin = (await import('./Admin.js')).default;
+    
+    // Check if admin user exists
+    const admin = await Admin.findOne({ email });
+    
+    if (!admin) {
+      return res.status(401).json({
+        message: 'User not found',
+        status: 'error'
+      });
+    }
+    
+    console.log('User found in database');
+    
+    // Check password
+    const isMatch = await admin.comparePassword(password);
+    console.log('Password match result:', isMatch);
+    
+    if (!isMatch) {
+      return res.status(401).json({
+        message: 'Invalid password',
+        status: 'error'
+      });
+    }
+    
+    res.json({
+      message: 'Login successful',
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email
+      },
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error during test login:', error);
+    res.status(500).json({
+      message: 'Error during test login',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Use modular routes
 app.use('/api/departments', departmentRoutes);
 app.use('/api/classes', classRoutes);
