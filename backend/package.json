@@ -8,7 +8,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "add-admin": "node addAdminUser.js",
-    "check-admin": "node checkAdmin.js"
+    "check-admin": "node checkAdmin.js",
+    "test-admin-password": "node testAdminPassword.js"
   },
   "keywords": [],
   "author": "",

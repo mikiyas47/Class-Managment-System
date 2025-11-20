@@ -13,6 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Unified login endpoint that identifies user type and redirects accordingly
 router.post('/login', async (req, res) => {
   try {
+    console.log('Login request received:', req.body);
     const { email, password } = req.body;
     
     // Try to find the user in each collection
@@ -21,8 +22,12 @@ router.post('/login', async (req, res) => {
     
     // Check if it's an admin
     user = await Admin.findOne({ email });
+    console.log('Admin search result:', user ? 'User found' : 'User not found');
+    
     if (user) {
       const isMatch = await user.comparePassword(password);
+      console.log('Admin password match:', isMatch);
+      
       if (isMatch) {
         userType = 'admin';
       } else {
@@ -33,8 +38,12 @@ router.post('/login', async (req, res) => {
     // Check if it's a department head
     if (!user) {
       user = await DepartmentHead.findOne({ email }).populate('department');
+      console.log('Department head search result:', user ? 'User found' : 'User not found');
+      
       if (user) {
         const isMatch = await user.comparePassword(password);
+        console.log('Department head password match:', isMatch);
+        
         if (isMatch) {
           userType = 'department-head';
         } else {
@@ -46,8 +55,12 @@ router.post('/login', async (req, res) => {
     // Check if it's a teacher
     if (!user) {
       user = await Teacher.findOne({ email });
+      console.log('Teacher search result:', user ? 'User found' : 'User not found');
+      
       if (user) {
         const isMatch = await user.comparePassword(password);
+        console.log('Teacher password match:', isMatch);
+        
         if (isMatch) {
           userType = 'teacher';
         } else {
@@ -59,8 +72,12 @@ router.post('/login', async (req, res) => {
     // Check if it's a student
     if (!user) {
       user = await Student.findOne({ email }).populate('department').populate('class');
+      console.log('Student search result:', user ? 'User found' : 'User not found');
+      
       if (user) {
         const isMatch = await user.comparePassword(password);
+        console.log('Student password match:', isMatch);
+        
         if (isMatch) {
           userType = 'student';
         } else {
@@ -71,11 +88,14 @@ router.post('/login', async (req, res) => {
     
     // If no user found or invalid password
     if (!user) {
+      console.log('Login failed: Invalid email or password for email:', email);
       return res.status(401).json({
         message: 'Invalid email or password',
         status: 'error'
       });
     }
+    
+    console.log('Login successful for user:', user.email, 'Type:', userType);
     
     // Generate JWT token with user-specific information
     const token = jwt.sign(
