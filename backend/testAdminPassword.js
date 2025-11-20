@@ -1,5 +1,6 @@
 // Script to test admin user password
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -51,14 +52,30 @@ const testAdminPassword = async () => {
     console.log('ID:', admin._id);
     console.log('Name:', admin.name);
     console.log('Email:', admin.email);
+    console.log('Stored password hash:', admin.password);
     
     // Test password
     const testPassword = 'miki1234';
-    const isMatch = await admin.comparePassword(testPassword);
-    console.log('Password test result for "miki1234":', isMatch);
+    console.log('Testing password:', testPassword);
     
-    if (!isMatch) {
-      console.log('❌ Password does not match. The password might be different than expected.');
+    const isMatch = await bcrypt.compare(testPassword, admin.password);
+    console.log('Direct bcrypt comparison result:', isMatch);
+    
+    // Also test using the model's method
+    const isMatch2 = await admin.comparePassword(testPassword);
+    console.log('Model method comparison result:', isMatch2);
+    
+    if (!isMatch || !isMatch2) {
+      console.log('❌ Password does not match. The stored hash might be corrupted.');
+      
+      // Let's try to recreate the hash
+      console.log('Testing hash recreation...');
+      const salt = await bcrypt.genSalt(10);
+      const newHash = await bcrypt.hash(testPassword, salt);
+      console.log('New hash:', newHash);
+      
+      const isNewMatch = await bcrypt.compare(testPassword, newHash);
+      console.log('New hash comparison result:', isNewMatch);
     } else {
       console.log('✅ Password matches!');
     }

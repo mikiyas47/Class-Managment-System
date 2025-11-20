@@ -325,25 +325,27 @@ const createDefaultAdmin = async () => {
     const Admin = (await import('./Admin.js')).default;
     
     // Check if admin already exists
-    const existingAdmin = await Admin.findOne({ email: 'mikishemels@gmail.com' });
+    let existingAdmin = await Admin.findOne({ email: 'mikishemels@gmail.com' });
     
-    if (!existingAdmin) {
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash('miki1234', salt);
-      
-      // Create admin user
-      const admin = new Admin({
-        name: 'Mikishe Melaku',
-        email: 'mikishemels@gmail.com',
-        password: hashedPassword
-      });
-      
-      await admin.save();
-      console.log('✅ Default admin user created successfully');
-    } else {
-      console.log('ℹ️  Default admin user already exists');
+    // If admin exists, delete it to ensure we have the correct password
+    if (existingAdmin) {
+      console.log('ℹ️  Deleting existing admin user to recreate with correct password');
+      await Admin.deleteOne({ email: 'mikishemels@gmail.com' });
     }
+    
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash('miki1234', salt);
+    
+    // Create admin user
+    const admin = new Admin({
+      name: 'Mikishe Melaku',
+      email: 'mikishemels@gmail.com',
+      password: hashedPassword
+    });
+    
+    await admin.save();
+    console.log('✅ Default admin user created successfully with correct password');
   } catch (error) {
     console.error('❌ Error creating default admin user:', error);
   }
@@ -686,6 +688,153 @@ const getUserFromToken = async (tokenPayload) => {
     return null;
   }
 };
+
+// Add an endpoint to test bcrypt functionality
+app.get("/test-bcrypt", async (req, res) => {
+  try {
+    console.log('Testing bcrypt functionality...');
+    
+    // Import bcrypt
+    const bcrypt = (await import('bcryptjs')).default;
+    
+    // Test password
+    const password = 'miki1234';
+    console.log('Original password:', password);
+    
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    console.log('Hashed password:', hashedPassword);
+    
+    // Test comparison with correct password
+    const isMatch1 = await bcrypt.compare(password, hashedPassword);
+    console.log('Comparison with correct password:', isMatch1);
+    
+    // Test comparison with incorrect password
+    const isMatch2 = await bcrypt.compare('wrongpassword', hashedPassword);
+    console.log('Comparison with incorrect password:', isMatch2);
+    
+    if (isMatch1 && !isMatch2) {
+      console.log('✅ Bcrypt is working correctly!');
+      res.json({
+        message: 'Bcrypt is working correctly',
+        bcryptTest: {
+          originalPassword: password,
+          hashedPassword: hashedPassword,
+          correctPasswordMatch: isMatch1,
+          incorrectPasswordMatch: isMatch2
+        },
+        status: 'success'
+      });
+    } else {
+      console.log('❌ Bcrypt is not working correctly!');
+      res.status(500).json({
+        message: 'Bcrypt is not working correctly',
+        status: 'error'
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error testing bcrypt:', error);
+    res.status(500).json({
+      message: 'Error testing bcrypt',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Add an enhanced endpoint to test admin password with detailed information
+app.get("/test-admin-password-detailed", async (req, res) => {
+  try {
+    console.log('Running detailed admin password test...');
+    
+    // Import Admin model and bcrypt
+    const Admin = (await import('./Admin.js')).default;
+    const bcrypt = (await import('bcryptjs')).default;
+    
+    // Check if admin user exists
+    const admin = await Admin.findOne({ email: 'mikishemels@gmail.com' });
+    
+    if (!admin) {
+      console.log('❌ Admin user with email mikishemels@gmail.com not found');
+      return res.status(404).json({
+        message: 'Admin user not found',
+        status: 'error'
+      });
+    }
+    
+    console.log('✅ Admin user found:', {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email
+    });
+    console.log('Stored password hash:', admin.password);
+    
+    // Test password
+    const testPassword = 'miki1234';
+    console.log('Testing password:', testPassword);
+    
+    const isMatch = await bcrypt.compare(testPassword, admin.password);
+    console.log('Direct bcrypt comparison result:', isMatch);
+    
+    // Also test using the model's method
+    const isMatch2 = await admin.comparePassword(testPassword);
+    console.log('Model method comparison result:', isMatch2);
+    
+    // Test with different variations
+    const testPasswords = ['miki1234', 'Miki1234', 'mikishemels', ''];
+    const results = {};
+    
+    for (const pwd of testPasswords) {
+      const match = await bcrypt.compare(pwd, admin.password);
+      results[pwd] = match;
+      console.log(`Password "${pwd}" comparison result:`, match);
+    }
+    
+    const response = {
+      message: 'Admin password test completed',
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email
+      },
+      storedHash: admin.password,
+      directComparison: isMatch,
+      modelMethodComparison: isMatch2,
+      passwordVariationsTest: results,
+      status: isMatch ? 'success' : 'error'
+    };
+    
+    if (!isMatch) {
+      console.log('❌ Password does not match. The stored hash might be corrupted.');
+      
+      // Let's try to recreate the hash
+      console.log('Testing hash recreation...');
+      const salt = await bcrypt.genSalt(10);
+      const newHash = await bcrypt.hash(testPassword, salt);
+      console.log('New hash:', newHash);
+      
+      const isNewMatch = await bcrypt.compare(testPassword, newHash);
+      console.log('New hash comparison result:', isNewMatch);
+      
+      response.newHashTest = {
+        newHash: newHash,
+        newHashComparison: isNewMatch
+      };
+    } else {
+      console.log('✅ Password matches!');
+    }
+    
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Error testing admin password:', error);
+    res.status(500).json({
+      message: 'Error testing admin password',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
 
 // Create default admin user and then start server
 createDefaultAdmin().then(() => {
