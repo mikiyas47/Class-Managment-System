@@ -458,6 +458,121 @@ app.post("/test-login", async (req, res) => {
   }
 });
 
+// Add an endpoint to test admin password
+app.get("/test-admin-password", async (req, res) => {
+  try {
+    console.log('Running admin password test...');
+    
+    // Import Admin model
+    const Admin = (await import('./Admin.js')).default;
+    
+    // Check if admin user exists
+    const admin = await Admin.findOne({ email: 'mikishemels@gmail.com' });
+    
+    if (!admin) {
+      console.log('❌ Admin user with email mikishemels@gmail.com not found');
+      return res.status(404).json({
+        message: 'Admin user not found',
+        status: 'error'
+      });
+    }
+    
+    console.log('✅ Admin user found:', {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email
+    });
+    
+    // Test multiple possible passwords
+    const testPasswords = ['miki1234', 'miki1234', 'Miki1234', 'mikishemels'];
+    let foundMatch = false;
+    
+    for (const testPassword of testPasswords) {
+      const isMatch = await admin.comparePassword(testPassword);
+      console.log(`Password test result for "${testPassword}":`, isMatch);
+      
+      if (isMatch) {
+        foundMatch = true;
+        console.log(`✅ Password "${testPassword}" matches!`);
+        break;
+      }
+    }
+    
+    if (!foundMatch) {
+      console.log('❌ None of the test passwords matched. The password might be different.');
+      return res.status(401).json({
+        message: 'None of the test passwords matched',
+        status: 'error'
+      });
+    }
+    
+    console.log('✅ Password test successful!');
+    res.json({
+      message: 'Admin password test successful',
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email
+      },
+      passwordMatch: true,
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('❌ Error testing admin password:', error);
+    res.status(500).json({
+      message: 'Error testing admin password',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
+// Add an endpoint to recreate the admin user with the correct password
+app.post("/recreate-admin", async (req, res) => {
+  try {
+    console.log('Recreating admin user...');
+    
+    // Import Admin model
+    const Admin = (await import('./Admin.js')).default;
+    
+    // Delete existing admin user
+    const deleted = await Admin.deleteOne({ email: 'mikishemels@gmail.com' });
+    console.log('Deleted existing admin user:', deleted.deletedCount);
+    
+    // Hash password
+    const bcrypt = (await import('bcryptjs')).default;
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash('miki1234', salt);
+    
+    // Create admin user
+    const admin = new Admin({
+      name: 'Mikishe Melaku',
+      email: 'mikishemels@gmail.com',
+      password: hashedPassword
+    });
+    
+    await admin.save();
+    console.log('✅ Admin user recreated successfully');
+    
+    res.json({
+      message: 'Admin user recreated successfully',
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email
+      },
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('❌ Error recreating admin user:', error);
+    res.status(500).json({
+      message: 'Error recreating admin user',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Use modular routes
 app.use('/api/departments', departmentRoutes);
 app.use('/api/classes', classRoutes);
