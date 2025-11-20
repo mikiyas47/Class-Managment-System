@@ -600,16 +600,20 @@ app.get("/recreate-admin", async (req, res) => {
     
     // Import Admin model
     const Admin = (await import('./Admin.js')).default;
+    const bcrypt = (await import('bcryptjs')).default;
     
     // Delete existing admin user
     const deleted = await Admin.deleteOne({ email: 'mikishemels@gmail.com' });
     console.log('Deleted existing admin user:', deleted.deletedCount);
     
     // Hash password
-    const bcrypt = (await import('bcryptjs')).default;
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash('miki1234', salt);
     console.log('Generated hash for "miki1234":', hashedPassword);
+    
+    // Test the hash immediately
+    const immediateTest = await bcrypt.compare('miki1234', hashedPassword);
+    console.log('Immediate hash test result:', immediateTest);
     
     // Create admin user
     const admin = new Admin({
@@ -618,14 +622,18 @@ app.get("/recreate-admin", async (req, res) => {
       password: hashedPassword
     });
     
-    console.log('Saving admin user with data:', {
+    console.log('Admin object before save:', {
       name: admin.name,
       email: admin.email,
       password: admin.password
     });
     
+    // Test the admin object's password before save
+    const preSaveTest = await admin.comparePassword('miki1234');
+    console.log('Pre-save password test result:', preSaveTest);
+    
     await admin.save();
-    console.log('✅ Admin user recreated successfully');
+    console.log('✅ Admin user saved successfully');
     console.log('Saved user data:', {
       id: admin._id,
       name: admin.name,
@@ -633,9 +641,22 @@ app.get("/recreate-admin", async (req, res) => {
       password: admin.password
     });
     
-    // Test the password immediately after saving
-    const isMatch = await admin.comparePassword('miki1234');
-    console.log('Immediate password test after save:', isMatch);
+    // Reload the user from database to ensure we're testing the saved version
+    const savedAdmin = await Admin.findById(admin._id);
+    console.log('Reloaded user from database:', {
+      id: savedAdmin._id,
+      name: savedAdmin.name,
+      email: savedAdmin.email,
+      password: savedAdmin.password
+    });
+    
+    // Test the password on the reloaded user
+    const postSaveTest = await savedAdmin.comparePassword('miki1234');
+    console.log('Post-save password test result:', postSaveTest);
+    
+    // Also test with direct bcrypt comparison on reloaded user
+    const directTest = await bcrypt.compare('miki1234', savedAdmin.password);
+    console.log('Direct bcrypt comparison on saved user:', directTest);
     
     res.json({
       message: 'Admin user recreated successfully via GET request',
@@ -643,8 +664,11 @@ app.get("/recreate-admin", async (req, res) => {
         id: admin._id,
         name: admin.name,
         email: admin.email,
-        passwordTest: isMatch,
-        hash: admin.password
+        preSaveTest: preSaveTest,
+        postSaveTest: postSaveTest,
+        directTest: directTest,
+        generatedHash: hashedPassword,
+        savedHash: savedAdmin.password
       },
       status: 'success'
     });
