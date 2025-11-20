@@ -575,6 +575,60 @@ app.post("/recreate-admin", async (req, res) => {
   }
 });
 
+// Add an endpoint to verify the current admin user
+app.get("/verify-admin", async (req, res) => {
+  try {
+    console.log('Verifying current admin user...');
+    
+    // Import Admin model
+    const Admin = (await import('./Admin.js')).default;
+    
+    // Check if admin user exists
+    const admin = await Admin.findOne({ email: 'mikishemels@gmail.com' });
+    
+    if (!admin) {
+      console.log('❌ Admin user with email mikishemels@gmail.com not found');
+      return res.status(404).json({
+        message: 'Admin user not found',
+        status: 'error'
+      });
+    }
+    
+    console.log('✅ Admin user found:', {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt
+    });
+    
+    // Test the password with our known correct password
+    const testPassword = 'miki1234';
+    const isMatch = await admin.comparePassword(testPassword);
+    console.log('Password test for "miki1234":', isMatch);
+    
+    res.json({
+      message: 'Admin user verification completed',
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        createdAt: admin.createdAt,
+        updatedAt: admin.updatedAt
+      },
+      passwordMatch: isMatch,
+      status: isMatch ? 'success' : 'error'
+    });
+  } catch (error) {
+    console.error('❌ Error verifying admin user:', error);
+    res.status(500).json({
+      message: 'Error verifying admin user',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Use modular routes
 app.use('/api/departments', departmentRoutes);
 app.use('/api/classes', classRoutes);

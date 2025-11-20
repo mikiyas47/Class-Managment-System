@@ -13,75 +13,93 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Unified login endpoint that identifies user type and redirects accordingly
 router.post('/login', async (req, res) => {
   try {
-    console.log('Login request received:', req.body);
+    console.log('=== LOGIN ATTEMPT ===');
+    console.log('Request body:', req.body);
     const { email, password } = req.body;
+    console.log('Login attempt for email:', email);
     
     // Try to find the user in each collection
     let user = null;
     let userType = null;
     
     // Check if it's an admin
+    console.log('Checking for admin user...');
     user = await Admin.findOne({ email });
     console.log('Admin search result:', user ? 'User found' : 'User not found');
     
     if (user) {
+      console.log('Admin user found, checking password...');
+      console.log('Stored hash:', user.password);
+      console.log('Provided password:', password);
+      
       const isMatch = await user.comparePassword(password);
-      console.log('Admin password match:', isMatch);
+      console.log('Admin password match result:', isMatch);
       
       if (isMatch) {
         userType = 'admin';
+        console.log('Admin authentication successful');
       } else {
         user = null; // Invalid password
+        console.log('Admin password mismatch');
       }
     }
     
     // Check if it's a department head
     if (!user) {
+      console.log('Checking for department head user...');
       user = await DepartmentHead.findOne({ email }).populate('department');
       console.log('Department head search result:', user ? 'User found' : 'User not found');
       
       if (user) {
         const isMatch = await user.comparePassword(password);
-        console.log('Department head password match:', isMatch);
+        console.log('Department head password match result:', isMatch);
         
         if (isMatch) {
           userType = 'department-head';
+          console.log('Department head authentication successful');
         } else {
           user = null; // Invalid password
+          console.log('Department head password mismatch');
         }
       }
     }
     
     // Check if it's a teacher
     if (!user) {
+      console.log('Checking for teacher user...');
       user = await Teacher.findOne({ email });
       console.log('Teacher search result:', user ? 'User found' : 'User not found');
       
       if (user) {
         const isMatch = await user.comparePassword(password);
-        console.log('Teacher password match:', isMatch);
+        console.log('Teacher password match result:', isMatch);
         
         if (isMatch) {
           userType = 'teacher';
+          console.log('Teacher authentication successful');
         } else {
           user = null; // Invalid password
+          console.log('Teacher password mismatch');
         }
       }
     }
     
     // Check if it's a student
     if (!user) {
+      console.log('Checking for student user...');
       user = await Student.findOne({ email }).populate('department').populate('class');
       console.log('Student search result:', user ? 'User found' : 'User not found');
       
       if (user) {
         const isMatch = await user.comparePassword(password);
-        console.log('Student password match:', isMatch);
+        console.log('Student password match result:', isMatch);
         
         if (isMatch) {
           userType = 'student';
+          console.log('Student authentication successful');
         } else {
           user = null; // Invalid password
+          console.log('Student password mismatch');
         }
       }
     }
