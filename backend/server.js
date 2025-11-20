@@ -545,6 +545,7 @@ app.post("/recreate-admin", async (req, res) => {
     const bcrypt = (await import('bcryptjs')).default;
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash('miki1234', salt);
+    console.log('Generated hash for "miki1234":', hashedPassword);
     
     // Create admin user
     const admin = new Admin({
@@ -553,15 +554,32 @@ app.post("/recreate-admin", async (req, res) => {
       password: hashedPassword
     });
     
+    console.log('Saving admin user with data:', {
+      name: admin.name,
+      email: admin.email,
+      password: admin.password
+    });
+    
     await admin.save();
     console.log('✅ Admin user recreated successfully');
+    console.log('Saved user data:', {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      password: admin.password
+    });
+    
+    // Test the password immediately after saving
+    const isMatch = await admin.comparePassword('miki1234');
+    console.log('Immediate password test after save:', isMatch);
     
     res.json({
       message: 'Admin user recreated successfully',
       user: {
         id: admin._id,
         name: admin.name,
-        email: admin.email
+        email: admin.email,
+        passwordTest: isMatch
       },
       status: 'success'
     });
