@@ -372,6 +372,41 @@ app.get("/", (req, res) => {
   res.send("Backend is running...");
 });
 
+// Add a test endpoint to check if admin user exists
+app.get("/test-admin", async (req, res) => {
+  try {
+    // Import Admin model
+    const Admin = (await import('./Admin.js')).default;
+    
+    // Check if admin user exists
+    const admin = await Admin.findOne({ email: 'mikishemels@gmail.com' });
+    
+    if (admin) {
+      res.json({
+        message: 'Admin user found',
+        user: {
+          id: admin._id,
+          name: admin.name,
+          email: admin.email
+        },
+        status: 'success'
+      });
+    } else {
+      res.status(404).json({
+        message: 'Admin user not found',
+        status: 'error'
+      });
+    }
+  } catch (error) {
+    console.error('Error checking admin user:', error);
+    res.status(500).json({
+      message: 'Error checking admin user',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Use modular routes
 app.use('/api/departments', departmentRoutes);
 app.use('/api/classes', classRoutes);
