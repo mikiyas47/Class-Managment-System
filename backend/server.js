@@ -593,6 +593,71 @@ app.post("/recreate-admin", async (req, res) => {
   }
 });
 
+// Add a GET version for easier browser testing
+app.get("/recreate-admin", async (req, res) => {
+  try {
+    console.log('Recreating admin user via GET request...');
+    
+    // Import Admin model
+    const Admin = (await import('./Admin.js')).default;
+    
+    // Delete existing admin user
+    const deleted = await Admin.deleteOne({ email: 'mikishemels@gmail.com' });
+    console.log('Deleted existing admin user:', deleted.deletedCount);
+    
+    // Hash password
+    const bcrypt = (await import('bcryptjs')).default;
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash('miki1234', salt);
+    console.log('Generated hash for "miki1234":', hashedPassword);
+    
+    // Create admin user
+    const admin = new Admin({
+      name: 'Mikishe Melaku',
+      email: 'mikishemels@gmail.com',
+      password: hashedPassword
+    });
+    
+    console.log('Saving admin user with data:', {
+      name: admin.name,
+      email: admin.email,
+      password: admin.password
+    });
+    
+    await admin.save();
+    console.log('✅ Admin user recreated successfully');
+    console.log('Saved user data:', {
+      id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      password: admin.password
+    });
+    
+    // Test the password immediately after saving
+    const isMatch = await admin.comparePassword('miki1234');
+    console.log('Immediate password test after save:', isMatch);
+    
+    res.json({
+      message: 'Admin user recreated successfully via GET request',
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        passwordTest: isMatch,
+        hash: admin.password
+      },
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('❌ Error recreating admin user:', error);
+    res.status(500).json({
+      message: 'Error recreating admin user',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Add an endpoint to verify the current admin user
 app.get("/verify-admin", async (req, res) => {
   try {
