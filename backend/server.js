@@ -615,26 +615,22 @@ app.get("/recreate-admin", async (req, res) => {
     const immediateTest = await bcrypt.compare('miki1234', hashedPassword);
     console.log('Immediate hash test result:', immediateTest);
     
-    // Create admin user
-    const admin = new Admin({
-      name: 'Mikishe Melaku',
-      email: 'mikishemels@gmail.com',
-      password: hashedPassword
-    });
+    // Create admin user using findOneAndUpdate to bypass pre-save hooks
+    const admin = await Admin.findOneAndUpdate(
+      { email: 'mikishemels@gmail.com' },
+      {
+        name: 'Mikishe Melaku',
+        email: 'mikishemels@gmail.com',
+        password: hashedPassword
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: false
+      }
+    );
     
-    console.log('Admin object before save:', {
-      name: admin.name,
-      email: admin.email,
-      password: admin.password
-    });
-    
-    // Test the admin object's password before save
-    const preSaveTest = await admin.comparePassword('miki1234');
-    console.log('Pre-save password test result:', preSaveTest);
-    
-    await admin.save();
-    console.log('✅ Admin user saved successfully');
-    console.log('Saved user data:', {
+    console.log('Admin user created/updated:', {
       id: admin._id,
       name: admin.name,
       email: admin.email,
@@ -664,7 +660,6 @@ app.get("/recreate-admin", async (req, res) => {
         id: admin._id,
         name: admin.name,
         email: admin.email,
-        preSaveTest: preSaveTest,
         postSaveTest: postSaveTest,
         directTest: directTest,
         generatedHash: hashedPassword,
