@@ -218,7 +218,11 @@ app.use((req, res, next) => {
   ];
   
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
+  // Allow requests from any origin for file downloads to support mobile devices
+  // But restrict other operations to allowed origins
+  if (req.path.includes('/download') || allowedOrigins.includes(origin) || !origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  } else if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   

@@ -254,15 +254,37 @@ const AssignmentsPage = ({ user }) => {
       // Create a blob from the response
       const blob = await response.blob();
       
-      // Create download link
+      // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      
+      // Check if we're on a mobile device
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // For mobile devices, create a temporary link and simulate a click
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank'; // Open in new tab for mobile
+        a.download = filename;
+        
+        // Add to DOM, click, and remove
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        // For desktop, use the traditional download approach
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      
+      // Clean up the object URL after a delay to ensure download completes
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
     } catch (err) {
       setError(err.message);
     }
@@ -456,6 +478,10 @@ const AssignmentsPage = ({ user }) => {
                   <tr key={assignment._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{assignment.originalName || assignment.filename}</div>
+                      {/* Mobile-friendly download hint */}
+                      <div className="md:hidden mt-1 text-xs text-gray-500">
+                        Tap download icon to download
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">

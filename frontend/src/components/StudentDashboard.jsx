@@ -245,17 +245,42 @@ const StudentDashboard = ({ user, onLogout }) => {
       }
       
       const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      
+      // Check if we're on a mobile device
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // For mobile devices, create a temporary link and simulate a click
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank'; // Open in new tab for mobile
+        a.download = filename;
+        
+        // Add to DOM, click, and remove
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        // For desktop, use the traditional download approach
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+      
+      // Clean up the object URL after a delay to ensure download completes
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
     } catch (error) {
       console.error('Download error:', error);
-      alert(`Failed to download file: ${error.message}`);
+      // Show a more user-friendly error message
+      alert(`Failed to download file: ${error.message}\n\nPlease try again or contact support if the issue persists.`);
     }
   };
 
@@ -462,6 +487,10 @@ const StudentDashboard = ({ user, onLogout }) => {
                             {assignment.filename}
                             <FaDownload className="ml-2 text-gray-500" />
                           </button>
+                        </div>
+                        {/* Mobile-friendly download hint */}
+                        <div className="md:hidden mt-1 text-xs text-gray-500">
+                          Tap file name to download
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
