@@ -292,7 +292,9 @@ const CoursesPage = () => {
   const handleDeleteCourse = async (courseId) => {
     if (window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/courses/${courseId}`, {
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        const response = await fetch(`${API_BASE_URL}/api/courses/${courseId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -372,10 +374,13 @@ const CoursesPage = () => {
         class: selectedClass // Use the pre-selected class
       };
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Determine URL and method based on whether we're editing or adding
       const url = editingCourse 
-        ? `http://localhost:5000/api/courses/${editingCourse._id}`
-        : 'http://localhost:5000/api/courses';
+        ? `${API_BASE_URL}/api/courses/${editingCourse._id}`
+        : `${API_BASE_URL}/api/courses`;
       
       const method = editingCourse ? 'PUT' : 'POST';
       

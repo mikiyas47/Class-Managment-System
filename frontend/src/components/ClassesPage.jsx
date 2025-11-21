@@ -248,7 +248,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
         throw new Error('All fields are required');
       }
 
-      const response = await fetch('http://localhost:5000/api/classes', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/classes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

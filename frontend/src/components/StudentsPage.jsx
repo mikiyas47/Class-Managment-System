@@ -302,10 +302,13 @@ const StudentsPage = () => {
         requestBody.password = formData.password;
       }
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Determine URL and method based on whether we're editing or adding
       const url = editingStudent 
-        ? `http://localhost:5000/api/students/${editingStudent._id}`
-        : 'http://localhost:5000/api/students';
+        ? `${API_BASE_URL}/api/students/${editingStudent._id}`
+        : `${API_BASE_URL}/api/students`;
       
       const method = editingStudent ? 'PUT' : 'POST';
       
@@ -402,8 +405,10 @@ const StudentsPage = () => {
 
     try {
       setLoading(true);
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
       // Fetch all students in the selected class
-      const response = await fetch(`http://localhost:5000/api/students/class/${selectedClass}`, {
+      const response = await fetch(`${API_BASE_URL}/api/students/class/${selectedClass}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -429,7 +434,9 @@ const StudentsPage = () => {
   // Get next class information for a student
   const getNextClassInfo = async (studentId) => {
     try {
-      const response = await fetch('http://localhost:5000/api/students/next-class', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/students/next-class`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -505,7 +512,9 @@ const StudentsPage = () => {
       setIsUpgrading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:5000/api/students/upgrade-class', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/students/upgrade-class`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -547,7 +556,9 @@ const StudentsPage = () => {
       setShowPreview(false);
       setError(null);
       
-      const response = await fetch('http://localhost:5000/api/students/upgrade-class', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/students/upgrade-class`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

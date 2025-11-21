@@ -60,7 +60,9 @@ const SchedulesPage = ({ user }) => {
   const fetchSchedules = async () => {
     try {
       console.log('Fetching schedules...');
-      const response = await fetch('http://localhost:5000/api/schedules', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/schedules`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -90,7 +92,9 @@ const SchedulesPage = ({ user }) => {
   const fetchClasses = async () => {
     try {
       console.log('Fetching classes...');
-      const response = await fetch('http://localhost:5000/api/classes', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/classes`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -112,7 +116,9 @@ const SchedulesPage = ({ user }) => {
   const fetchCourses = async () => {
     try {
       console.log('Fetching courses...');
-      const response = await fetch('http://localhost:5000/api/courses', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/courses`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -206,7 +212,9 @@ const SchedulesPage = ({ user }) => {
         throw new Error('All fields are required');
       }
 
-      const response = await fetch(`http://localhost:5000/api/schedules/${editingSchedule._id}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/schedules/${editingSchedule._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -246,7 +254,9 @@ const SchedulesPage = ({ user }) => {
     }
     
     try {
-      const response = await fetch(`http://localhost:5000/api/schedules/${scheduleId}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/schedules/${scheduleId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -281,7 +291,9 @@ const SchedulesPage = ({ user }) => {
         throw new Error('All fields are required');
       }
 
-      const response = await fetch('http://localhost:5000/api/schedules', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/schedules`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
