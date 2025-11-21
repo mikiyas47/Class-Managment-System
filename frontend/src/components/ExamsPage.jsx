@@ -262,14 +262,21 @@ const ExamsPage = ({ user }) => {
   };
 
   const formatDate = (dateString) => {
+    // Create a new Date object from the dateString
+    const date = new Date(dateString);
+    
+    // Format the date in Nairobi timezone (UTC+3)
     const options = { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Africa/Nairobi'
     };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    
+    // Use toLocaleDateString with Nairobi timezone
+    return date.toLocaleDateString('en-US', options);
   };
 
   const getClassInfo = (classId) => {

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Exam from '../Exam.js';
 import { authenticateToken } from '../middleware/auth.middleware.js';
 import jwt from 'jsonwebtoken';
+import moment from 'moment-timezone';
 
 const router = express.Router();
 
@@ -239,7 +240,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Create new exam
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { class: classId, teacher, course, title, duration, startTime } = req.body;
+    let { class: classId, teacher, course, title, duration, startTime } = req.body;
     
     // Verify the token to get user information
     const token = req.headers.authorization?.split(' ')[1];
@@ -278,6 +279,11 @@ router.post('/', authenticateToken, async (req, res) => {
         status: 'error'
       });
     }
+    
+    // Convert startTime to Nairobi timezone (UTC+3)
+    // The frontend sends time in browser's local timezone, we need to convert it to Nairobi time
+    const nairobiTime = moment.tz(startTime, moment.tz.guess()).tz('Africa/Nairobi');
+    startTime = nairobiTime.toDate();
     
     const exam = new Exam({
       class: classId,
@@ -339,7 +345,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         status: 'error'
       });
     }
-    const { class: classId, teacher, course, title, duration, startTime } = req.body;
+    let { class: classId, teacher, course, title, duration, startTime } = req.body;
     
     // Verify the token to get user information
     const token = req.headers.authorization?.split(' ')[1];
@@ -387,6 +393,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
         status: 'error'
       });
     }
+    
+    // Convert startTime to Nairobi timezone (UTC+3)
+    // The frontend sends time in browser's local timezone, we need to convert it to Nairobi time
+    const nairobiTime = moment.tz(startTime, moment.tz.guess()).tz('Africa/Nairobi');
+    startTime = nairobiTime.toDate();
     
     const exam = await Exam.findByIdAndUpdate(
       id,
