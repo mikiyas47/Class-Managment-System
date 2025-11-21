@@ -20,7 +20,9 @@ const DepartmentsPage = () => {
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/departments');
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/departments`);
       const data = await response.json();
       if (data.status === 'success') {
         setDepartments(data.data);
@@ -44,9 +46,12 @@ const DepartmentsPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       const url = editingDepartment 
-        ? `http://localhost:5000/api/departments/${editingDepartment._id}`
-        : 'http://localhost:5000/api/departments';
+        ? `${API_BASE_URL}/api/departments/${editingDepartment._id}`
+        : `${API_BASE_URL}/api/departments`;
       
       const method = editingDepartment ? 'PUT' : 'POST';
       
@@ -89,10 +94,13 @@ const DepartmentsPage = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this department?')) {
       try {
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        
         // Get token from localStorage
         const token = localStorage.getItem('token');
         
-        const response = await fetch(`http://localhost:5000/api/departments/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/departments/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

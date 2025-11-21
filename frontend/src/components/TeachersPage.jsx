@@ -33,7 +33,9 @@ const TeachersPage = () => {
 
   const fetchTeachers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/teachers', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/teachers`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -75,9 +77,12 @@ const TeachersPage = () => {
         throw new Error('Password must be at least 6 characters long');
       }
 
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       const url = editingTeacher 
-        ? `http://localhost:5000/api/teachers/${editingTeacher._id}`
-        : 'http://localhost:5000/api/teachers';
+        ? `${API_BASE_URL}/api/teachers/${editingTeacher._id}`
+        : `${API_BASE_URL}/api/teachers`;
 
       const method = editingTeacher ? 'PUT' : 'POST';
       
@@ -143,7 +148,9 @@ const TeachersPage = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/teachers/${teacherId}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/teachers/${teacherId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

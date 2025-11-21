@@ -26,7 +26,9 @@ const ExamsPage = ({ user }) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/exams?teacher=${user._id}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/exams?teacher=${user._id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -51,8 +53,11 @@ const ExamsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // First, get the courses the teacher teaches
-      const coursesResponse = await fetch(`http://localhost:5000/api/teachers/${user._id}/courses`, {
+      const coursesResponse = await fetch(`${API_BASE_URL}/api/teachers/${user._id}/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -75,7 +80,7 @@ const ExamsPage = ({ user }) => {
       // Fetch class details for these classes
       const classesData = await Promise.all(classIds.map(async (classId) => {
         try {
-          const classResponse = await fetch(`http://localhost:5000/api/classes/${classId}`, {
+          const classResponse = await fetch(`${API_BASE_URL}/api/classes/${classId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -107,7 +112,9 @@ const ExamsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('http://localhost:5000/api/classes', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/classes`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -145,9 +152,12 @@ const ExamsPage = ({ user }) => {
     
     try {
       const token = localStorage.getItem('token');
+      
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
       const url = editingExam 
-        ? `http://localhost:5000/api/exams/${editingExam._id}` 
-        : 'http://localhost:5000/api/exams';
+        ? `${API_BASE_URL}/api/exams/${editingExam._id}` 
+        : `${API_BASE_URL}/api/exams`;
       
       const method = editingExam ? 'PUT' : 'POST';
       
@@ -219,7 +229,9 @@ const ExamsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/exams/${examId}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/exams/${examId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -228,7 +240,8 @@ const ExamsPage = ({ user }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete exam');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete exam');
       }
 
       fetchExams();

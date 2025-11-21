@@ -28,7 +28,9 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
 
   const fetchDepartmentHeads = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/department-heads');
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/department-heads`);
       const data = await response.json();
       if (data.status === 'success') {
         setDepartmentHeads(data.data);
@@ -42,7 +44,9 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/departments');
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/departments`);
       const data = await response.json();
       if (data.status === 'success') {
         setDepartments(data.data);
@@ -82,9 +86,11 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
     }
 
     try {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
       const url = editingDepartmentHead 
-        ? `http://localhost:5000/api/department-heads/${editingDepartmentHead._id}`
-        : 'http://localhost:5000/api/department-heads';
+        ? `${API_BASE_URL}/api/department-heads/${editingDepartmentHead._id}`
+        : `${API_BASE_URL}/api/department-heads`;
       
       const method = editingDepartmentHead ? 'PUT' : 'POST';
       
@@ -143,10 +149,13 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this department head?')) {
       try {
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        
         // Get token from localStorage
         const token = localStorage.getItem('token');
         
-        const response = await fetch(`http://localhost:5000/api/department-heads/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/department-heads/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

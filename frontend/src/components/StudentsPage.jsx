@@ -53,7 +53,9 @@ const StudentsPage = () => {
   // Fetch students from API
   const fetchStudents = async (classId = '') => {
     try {
-      let url = 'http://localhost:5000/api/students';
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      let url = `${API_BASE_URL}/api/students`;
       if (classId) {
         url += `?class=${classId}`;
       }
@@ -88,7 +90,9 @@ const StudentsPage = () => {
   // Fetch departments
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/departments', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/departments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -107,7 +111,9 @@ const StudentsPage = () => {
   const fetchClasses = async (departmentId = '') => {
     try {
       setLoading(true);
-      let url = 'http://localhost:5000/api/classes';
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      let url = `${API_BASE_URL}/api/classes`;
       if (departmentId) {
         url += `?department=${departmentId}`;
       }
@@ -198,7 +204,9 @@ const StudentsPage = () => {
   const handleDeleteStudent = async (studentId) => {
     if (window.confirm('Are you sure you want to delete this student? This action cannot be undone.')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/students/${studentId}`, {
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        const response = await fetch(`${API_BASE_URL}/api/students/${studentId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`

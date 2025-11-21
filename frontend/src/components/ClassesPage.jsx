@@ -72,7 +72,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
   const fetchClasses = async () => {
     try {
       console.log('Fetching classes...');
-      const response = await fetch('http://localhost:5000/api/classes', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/classes`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -111,7 +113,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
   const fetchDepartments = async () => {
     try {
       console.log('Fetching departments...');
-      const response = await fetch('http://localhost:5000/api/departments', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/departments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -172,7 +176,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
         throw new Error('All fields are required');
       }
 
-      const response = await fetch(`http://localhost:5000/api/classes/${editingClass._id}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/classes/${editingClass._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -208,7 +214,9 @@ const ClassesPage = ({ user }) => { // Accept user prop
     }
     
     try {
-      const response = await fetch(`http://localhost:5000/api/classes/${classId}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/classes/${classId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -224,8 +232,6 @@ const ClassesPage = ({ user }) => { // Accept user prop
       await fetchClasses();
     } catch (err) {
       setError(err.message);
-      // Show error for a few seconds
-      setTimeout(() => setError(null), 5000);
     }
   };
 
