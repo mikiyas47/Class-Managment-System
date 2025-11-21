@@ -78,28 +78,35 @@ const StudentDashboard = ({ user, onLogout }) => {
 
   // Initialize WebSocket connection
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
-    setSocket(newSocket);
+    const initializeSocket = async () => {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const newSocket = io(API_BASE_URL);
+      setSocket(newSocket);
 
-    // Connect to server
-    newSocket.emit('student-connect', user._id);
+      // Connect to server
+      newSocket.emit('student-connect', user._id);
 
-    // Listen for exam updates
-    newSocket.on('exam-upcoming', (examData) => {
-      console.log('Upcoming exam notification:', examData);
-      // Refresh exams when an exam is about to start
-      fetchExams();
-    });
+      // Listen for exam updates
+      newSocket.on('exam-upcoming', (examData) => {
+        console.log('Upcoming exam notification:', examData);
+        // Refresh exams when an exam is about to start
+        fetchExams();
+      });
 
-    newSocket.on('exam-active', (examData) => {
-      console.log('Active exam notification:', examData);
-      // Refresh exams when an exam becomes active
-      fetchExams();
-    });
+      newSocket.on('exam-active', (examData) => {
+        console.log('Active exam notification:', examData);
+        // Refresh exams when an exam becomes active
+        fetchExams();
+      });
 
-    return () => {
-      newSocket.close();
+      return () => {
+        newSocket.close();
+      };
     };
+
+    initializeSocket();
   }, [user._id]);
 
   useEffect(() => {
@@ -107,6 +114,9 @@ const StudentDashboard = ({ user, onLogout }) => {
       try {
         const token = localStorage.getItem('token');
         const studentId = user._id;
+        
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
 
         // Fetch all student data in parallel
         // Note: We're using the new student-specific endpoints that filter by enrolled courses
@@ -117,19 +127,19 @@ const StudentDashboard = ({ user, onLogout }) => {
           resultsRes,
           announcementsRes
         ] = await Promise.all([
-          fetch(`http://localhost:5000/api/students/${studentId}/courses`, {
+          fetch(`${API_BASE_URL}/api/students/${studentId}/courses`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/exams/student/${studentId}`, {
+          fetch(`${API_BASE_URL}/api/exams/student/${studentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/students/${studentId}/assignments`, {
+          fetch(`${API_BASE_URL}/api/students/${studentId}/assignments`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/results/student/${studentId}`, {
+          fetch(`${API_BASE_URL}/api/results/student/${studentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`http://localhost:5000/api/students/${studentId}/announcements`, {
+          fetch(`${API_BASE_URL}/api/students/${studentId}/announcements`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ]);
@@ -177,8 +187,11 @@ const StudentDashboard = ({ user, onLogout }) => {
     try {
       const token = localStorage.getItem('token');
       const studentId = user._id;
+      
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
 
-      const examsRes = await fetch(`http://localhost:5000/api/exams/student/${studentId}`, {
+      const examsRes = await fetch(`${API_BASE_URL}/api/exams/student/${studentId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -217,7 +230,10 @@ const StudentDashboard = ({ user, onLogout }) => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/assignments/${assignmentId}/download`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/assignments/${assignmentId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
