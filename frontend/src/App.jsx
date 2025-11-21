@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
 import AdminDashboard from './components/AdminDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
-import StudentDashboard from './components/StudentDashboard';
+import StudentDashboard from './components/StudentDashboardMain';
 import DepartmentHeadDashboard from './components/DepartmentHeadDashboard';
 import { API_BASE_URL } from './api';
 
