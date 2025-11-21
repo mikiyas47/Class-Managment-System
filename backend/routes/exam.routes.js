@@ -281,8 +281,11 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     
     // Convert startTime to Nairobi timezone (UTC+3)
-    // The frontend sends time in browser's local timezone, we need to convert it to Nairobi time
-    const nairobiTime = moment.tz(startTime, moment.tz.guess()).tz('Africa/Nairobi');
+    // The frontend sends time in ISO format, we need to parse it and convert to Nairobi time
+    // First, parse the startTime as a moment object
+    const browserTime = moment(startTime);
+    // Then convert it to Nairobi timezone
+    const nairobiTime = browserTime.tz('Africa/Nairobi');
     startTime = nairobiTime.toDate();
     
     const exam = new Exam({
@@ -395,8 +398,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
     
     // Convert startTime to Nairobi timezone (UTC+3)
-    // The frontend sends time in browser's local timezone, we need to convert it to Nairobi time
-    const nairobiTime = moment.tz(startTime, moment.tz.guess()).tz('Africa/Nairobi');
+    // The frontend sends time in ISO format, we need to parse it and convert to Nairobi time
+    // First, parse the startTime as a moment object
+    const browserTime = moment(startTime);
+    // Then convert it to Nairobi timezone
+    const nairobiTime = browserTime.tz('Africa/Nairobi');
     startTime = nairobiTime.toDate();
     
     const exam = await Exam.findByIdAndUpdate(

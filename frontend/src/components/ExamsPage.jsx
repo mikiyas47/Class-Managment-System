@@ -161,6 +161,14 @@ const ExamsPage = ({ user }) => {
       
       const method = editingExam ? 'PUT' : 'POST';
       
+      // Ensure startTime is properly formatted
+      let formattedStartTime = formData.startTime;
+      if (formData.startTime) {
+        // The datetime-local input returns a string without timezone info
+        // We'll send it as-is and let the backend handle the timezone conversion
+        formattedStartTime = formData.startTime;
+      }
+      
       const response = await fetch(url, {
         method,
         headers: {
@@ -169,6 +177,7 @@ const ExamsPage = ({ user }) => {
         },
         body: JSON.stringify({
           ...formData,
+          startTime: formattedStartTime,
           teacher: user._id,
           course: selectedCourse._id, // Include the course ID
           duration: parseInt(formData.duration)
@@ -212,11 +221,25 @@ const ExamsPage = ({ user }) => {
     );
     
     setEditingExam(exam);
+    // Format the startTime for the datetime-local input
+    let formattedStartTime = '';
+    if (exam.startTime) {
+      // Convert to local time string for datetime-local input
+      const date = new Date(exam.startTime);
+      // Format as YYYY-MM-DDTHH:MM in local time
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      formattedStartTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+    
     setFormData({
       class: exam.class._id || exam.class,
       title: exam.title,
       duration: exam.duration,
-      startTime: exam.startTime.split('.')[0] // Remove milliseconds
+      startTime: formattedStartTime
     });
     setShowForm(true);
   };
