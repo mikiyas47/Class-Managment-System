@@ -83,20 +83,23 @@ const DepartmentHeadDashboard = ({ user, onLogout }) => {
       try {
         setLoading(true);
         
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        
         const [teachersRes, studentsRes, coursesRes] = await Promise.all([
-          fetch('http://localhost:5000/api/teachers', {
+          fetch(`${API_BASE_URL}/api/teachers`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
               'Content-Type': 'application/json'
             }
           }),
-          fetch('http://localhost:5000/api/students', {
+          fetch(`${API_BASE_URL}/api/students`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
               'Content-Type': 'application/json'
             }
           }),
-          fetch('http://localhost:5000/api/courses', {
+          fetch(`${API_BASE_URL}/api/courses`, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
               'Content-Type': 'application/json'
