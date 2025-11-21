@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
 import AdminDashboard from './components/AdminDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
@@ -100,36 +100,34 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="App">
-        <Routes>
-          <Route 
-            path="/login" 
-            element={user ? <Navigate to={`/${user.type}-dashboard`} /> : <Login onLoginSuccess={handleLoginSuccess} />} 
-          />
-          <Route 
-            path="/admin-dashboard/*" 
-            element={user && user.type === 'admin' ? <AdminDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/teacher-dashboard/*" 
-            element={user && user.type === 'teacher' ? <TeacherDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/student-dashboard/*" 
-            element={user && user.type === 'student' ? <StudentDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/department-head-dashboard/*" 
-            element={user && user.type === 'department-head' ? <DepartmentHeadDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/" 
-            element={<Navigate to={user ? `/${user.type}-dashboard` : "/login"} />} 
-          />
-        </Routes>
-      </div>
-    </Router>
+    <div className="App">
+      <Routes>
+        <Route 
+          path="/login" 
+          element={user ? <Navigate to={`/${user.type}-dashboard`} /> : <Login onLoginSuccess={handleLoginSuccess} />} 
+        />
+        <Route 
+          path="/admin-dashboard/*" 
+          element={user && user.type === 'admin' ? <AdminDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/teacher-dashboard/*" 
+          element={user && user.type === 'teacher' ? <TeacherDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/student-dashboard/*" 
+          element={user && user.type === 'student' ? <StudentDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/department-head-dashboard/*" 
+          element={user && user.type === 'department-head' ? <DepartmentHeadDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/" 
+          element={<Navigate to={user ? `/${user.type}-dashboard` : "/login"} />} 
+        />
+      </Routes>
+    </div>
   );
 }
 
