@@ -280,9 +280,20 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
     
-    // Parse startTime directly without timezone conversion
-    // This will store the time exactly as entered by the user
-    const examStartTime = new Date(startTime);
+    // Handle datetime-local input properly
+    // The datetime-local input sends time in format "YYYY-MM-DDTHH:MM" without timezone
+    // We need to treat this as Nairobi time directly
+    let examStartTime;
+    if (startTime) {
+      // Parse the datetime-local string and treat it as Nairobi time
+      const [datePart, timePart] = startTime.split('T');
+      const [year, month, day] = datePart.split('-');
+      const [hours, minutes] = timePart.split(':');
+      
+      // Create a date object in Nairobi timezone
+      // Note: JavaScript Date constructor treats values as local time
+      examStartTime = new Date(year, month - 1, day, hours, minutes);
+    }
     
     const exam = new Exam({
       class: classId,
@@ -393,9 +404,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
       });
     }
     
-    // Parse startTime directly without timezone conversion
-    // This will store the time exactly as entered by the user
-    const examStartTime = new Date(startTime);
+    // Handle datetime-local input properly
+    // The datetime-local input sends time in format "YYYY-MM-DDTHH:MM" without timezone
+    // We need to treat this as Nairobi time directly
+    let examStartTime;
+    if (startTime) {
+      // Parse the datetime-local string and treat it as Nairobi time
+      const [datePart, timePart] = startTime.split('T');
+      const [year, month, day] = datePart.split('-');
+      const [hours, minutes] = timePart.split(':');
+      
+      // Create a date object in Nairobi timezone
+      // Note: JavaScript Date constructor treats values as local time
+      examStartTime = new Date(year, month - 1, day, hours, minutes);
+    }
     
     const exam = await Exam.findByIdAndUpdate(
       id,

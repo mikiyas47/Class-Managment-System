@@ -28,7 +28,7 @@ const ExamRow = ({ exam, examEndTime, navigate }) => {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Format date without timezone conversion
+  // Format date in a consistent way
   const formatNairobiDate = (dateString) => {
     const date = new Date(dateString);
     const year = date.getFullYear();
@@ -37,7 +37,7 @@ const ExamRow = ({ exam, examEndTime, navigate }) => {
     return `${year}-${month}-${day}`;
   };
 
-  // Format time without timezone conversion
+  // Format time in a consistent way
   const formatNairobiTime = (dateString) => {
     const date = new Date(dateString);
     const hours = String(date.getHours()).padStart(2, '0');

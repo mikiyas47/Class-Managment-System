@@ -288,8 +288,7 @@ const ExamsPage = ({ user }) => {
     // Create a new Date object from the dateString
     const date = new Date(dateString);
     
-    // Format the date without timezone conversion
-    // This will display the time exactly as stored in the database
+    // Format the date in a consistent way
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
