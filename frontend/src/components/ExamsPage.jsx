@@ -288,12 +288,16 @@ const ExamsPage = ({ user }) => {
     // Create a new Date object from the dateString
     const date = new Date(dateString);
     
+    // Adjust for Nairobi timezone (UTC+3)
+    // Since we're storing Nairobi time but it's being treated as UTC, we need to add 3 hours for display
+    const nairobiTime = new Date(date.getTime() + 3 * 60 * 60 * 1000);
+    
     // Format the date in a consistent way
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const year = nairobiTime.getFullYear();
+    const month = String(nairobiTime.getMonth() + 1).padStart(2, '0');
+    const day = String(nairobiTime.getDate()).padStart(2, '0');
+    const hours = String(nairobiTime.getHours()).padStart(2, '0');
+    const minutes = String(nairobiTime.getMinutes()).padStart(2, '0');
     
     return `${year}-${month}-${day} ${hours}:${minutes}`;
   };

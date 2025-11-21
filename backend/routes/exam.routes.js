@@ -282,7 +282,7 @@ router.post('/', authenticateToken, async (req, res) => {
     
     // Handle datetime-local input properly
     // The datetime-local input sends time in format "YYYY-MM-DDTHH:MM" without timezone
-    // We need to treat this as Nairobi time directly
+    // We need to treat this as Nairobi time directly and store it as such
     let examStartTime;
     if (startTime) {
       // Parse the datetime-local string and treat it as Nairobi time
@@ -290,9 +290,11 @@ router.post('/', authenticateToken, async (req, res) => {
       const [year, month, day] = datePart.split('-');
       const [hours, minutes] = timePart.split(':');
       
-      // Create a date object in Nairobi timezone
-      // Note: JavaScript Date constructor treats values as local time
-      examStartTime = new Date(year, month - 1, day, hours, minutes);
+      // Create a date object treating the values as Nairobi time
+      // Set the timezone offset to +3 hours (Nairobi time)
+      examStartTime = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+      // Adjust for Nairobi timezone (UTC+3)
+      examStartTime.setUTCHours(examStartTime.getUTCHours() - 3);
     }
     
     const exam = new Exam({
@@ -406,7 +408,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     
     // Handle datetime-local input properly
     // The datetime-local input sends time in format "YYYY-MM-DDTHH:MM" without timezone
-    // We need to treat this as Nairobi time directly
+    // We need to treat this as Nairobi time directly and store it as such
     let examStartTime;
     if (startTime) {
       // Parse the datetime-local string and treat it as Nairobi time
@@ -414,9 +416,11 @@ router.put('/:id', authenticateToken, async (req, res) => {
       const [year, month, day] = datePart.split('-');
       const [hours, minutes] = timePart.split(':');
       
-      // Create a date object in Nairobi timezone
-      // Note: JavaScript Date constructor treats values as local time
-      examStartTime = new Date(year, month - 1, day, hours, minutes);
+      // Create a date object treating the values as Nairobi time
+      // Set the timezone offset to +3 hours (Nairobi time)
+      examStartTime = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+      // Adjust for Nairobi timezone (UTC+3)
+      examStartTime.setUTCHours(examStartTime.getUTCHours() - 3);
     }
     
     const exam = await Exam.findByIdAndUpdate(
@@ -599,6 +603,19 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
       return exam.startTime <= now || exam.startTime <= fiveSecondsAgo;
     });
 
+    const exam = await Exam.findByIdAndUpdate(
+      id,
+      {
+        class: classId,
+        teacher,
+        course,
+        title,
+        duration: parseInt(duration),
+        startTime: examStartTime
+      },
+      { new: true, runValidators: true }
+    ).populate('class', 'year semester').populate('teacher', 'name email').populate('course', 'subject code');
+    
     res.json({
       message: 'Exams retrieved successfully',
       data: finalExams,

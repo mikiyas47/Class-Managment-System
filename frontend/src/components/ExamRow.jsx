@@ -31,17 +31,23 @@ const ExamRow = ({ exam, examEndTime, navigate }) => {
   // Format date in a consistent way
   const formatNairobiDate = (dateString) => {
     const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    // Adjust for Nairobi timezone (UTC+3)
+    const nairobiTime = new Date(date.getTime() + 3 * 60 * 60 * 1000);
+    
+    const year = nairobiTime.getFullYear();
+    const month = String(nairobiTime.getMonth() + 1).padStart(2, '0');
+    const day = String(nairobiTime.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
   // Format time in a consistent way
   const formatNairobiTime = (dateString) => {
     const date = new Date(dateString);
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    // Adjust for Nairobi timezone (UTC+3)
+    const nairobiTime = new Date(date.getTime() + 3 * 60 * 60 * 1000);
+    
+    const hours = String(nairobiTime.getHours()).padStart(2, '0');
+    const minutes = String(nairobiTime.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
   };
 
