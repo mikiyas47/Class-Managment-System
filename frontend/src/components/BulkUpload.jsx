@@ -69,10 +69,13 @@ const BulkUpload = ({ onUpload, entityName, endpoint, token, departmentId = '', 
     setMessage({ text: 'Uploading...', type: 'info' });
 
     try {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Determine the correct endpoint based on entity type
       const endpoint = entityName === 'student' 
-        ? 'http://localhost:5000/api/students/bulk-upload'
-        : 'http://localhost:5000/api/teachers/bulk-upload';
+        ? `${API_BASE_URL}/api/students/bulk-upload`
+        : `${API_BASE_URL}/api/teachers/bulk-upload`;
       
       console.log('Sending request to:', endpoint);
       

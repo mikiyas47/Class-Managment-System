@@ -47,14 +47,17 @@ const SettingsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Determine the correct endpoint based on user type
-      let endpoint = 'http://localhost:5000/api/admin/change-password';
+      let endpoint = `${API_BASE_URL}/api/admin/change-password`;
       if (user && user.userType === 'department-head') {
-        endpoint = 'http://localhost:5000/api/department-heads/change-password';
+        endpoint = `${API_BASE_URL}/api/department-heads/change-password`;
       } else if (user && user.userType === 'teacher') {
-        endpoint = 'http://localhost:5000/api/teachers/change-password';
+        endpoint = `${API_BASE_URL}/api/teachers/change-password`;
       } else if (user && user.userType === 'student') {
-        endpoint = 'http://localhost:5000/api/students/change-password';
+        endpoint = `${API_BASE_URL}/api/students/change-password`;
       }
       
       const response = await fetch(endpoint, {
