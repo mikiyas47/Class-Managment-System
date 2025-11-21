@@ -24,8 +24,11 @@ const TeacherStudentsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Fetch courses taught by this teacher
-      const response = await fetch(`http://localhost:5000/api/teachers/${user._id}/courses`, {
+      const response = await fetch(`${API_BASE_URL}/api/teachers/${user._id}/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -50,8 +53,11 @@ const TeacherStudentsPage = ({ user }) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Fetch students for the selected class
-      const response = await fetch(`http://localhost:5000/api/students?class=${classId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/students?class=${classId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -77,8 +83,11 @@ const TeacherStudentsPage = ({ user }) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Fetch all students taught by this teacher
-      const response = await fetch(`http://localhost:5000/api/teachers/${user._id}/students`, {
+      const response = await fetch(`${API_BASE_URL}/api/teachers/${user._id}/students`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

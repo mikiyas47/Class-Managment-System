@@ -24,7 +24,9 @@ const AssignmentsPage = ({ user }) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/assignments`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/assignments`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -49,8 +51,11 @@ const AssignmentsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // First, get the courses the teacher teaches
-      const coursesResponse = await fetch(`http://localhost:5000/api/teachers/${user._id}/courses`, {
+      const coursesResponse = await fetch(`${API_BASE_URL}/api/teachers/${user._id}/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -70,7 +75,7 @@ const AssignmentsPage = ({ user }) => {
       // Fetch class details for these classes
       const classesData = await Promise.all(classIds.map(async (classId) => {
         try {
-          const classResponse = await fetch(`http://localhost:5000/api/classes/${classId}`, {
+          const classResponse = await fetch(`${API_BASE_URL}/api/classes/${classId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -129,6 +134,9 @@ const AssignmentsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Create FormData for file upload
       const formDataToSend = new FormData();
       formDataToSend.append('class', formData.class);
@@ -145,8 +153,8 @@ const AssignmentsPage = ({ user }) => {
       }
       
       const url = editingAssignment 
-        ? `http://localhost:5000/api/assignments/${editingAssignment._id}` 
-        : 'http://localhost:5000/api/assignments';
+        ? `${API_BASE_URL}/api/assignments/${editingAssignment._id}` 
+        : `${API_BASE_URL}/api/assignments`;
       
       const method = editingAssignment ? 'PUT' : 'POST';
       
@@ -205,7 +213,10 @@ const AssignmentsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/assignments/${assignmentId}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/assignments/${assignmentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -227,7 +238,10 @@ const AssignmentsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/assignments/${assignmentId}/download`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/assignments/${assignmentId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

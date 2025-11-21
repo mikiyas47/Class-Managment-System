@@ -9,7 +9,9 @@ const StudentScheduleView = ({ studentId, token }) => {
   // Fetch student schedules
   const fetchSchedules = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/students/${studentId}/schedules`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/students/${studentId}/schedules`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

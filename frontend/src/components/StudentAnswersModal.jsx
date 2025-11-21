@@ -25,9 +25,12 @@ const StudentAnswersModal = ({ isOpen, onClose, studentId, examId, examTitle, st
         throw new Error('Missing required parameters: studentId or examId');
       }
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // First, get the student exam record using student ID and exam ID
       console.log(`Fetching student exam for student: ${studentId} and exam: ${examId}`);
-      const studentExamResponse = await fetch(`http://localhost:5000/api/student-exams?student=${studentId}&exam=${examId}`, {
+      const studentExamResponse = await fetch(`${API_BASE_URL}/api/student-exams?student=${studentId}&exam=${examId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -74,7 +77,7 @@ const StudentAnswersModal = ({ isOpen, onClose, studentId, examId, examTitle, st
       
       // Then, get the answers for this student exam
       console.log(`Fetching answers for student exam: ${studentExamId}`);
-      const answersResponse = await fetch(`http://localhost:5000/api/answers?studentExam=${studentExamId}`, {
+      const answersResponse = await fetch(`${API_BASE_URL}/api/answers?studentExam=${studentExamId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -110,7 +113,7 @@ const StudentAnswersModal = ({ isOpen, onClose, studentId, examId, examTitle, st
           }
           
           try {
-            const questionResponse = await fetch(`http://localhost:5000/api/questions/${questionId}`, {
+            const questionResponse = await fetch(`${API_BASE_URL}/api/questions/${questionId}`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'

@@ -25,59 +25,65 @@ const StudentExamPage = ({ user }) => {
 
   // Initialize WebSocket connection
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
-    setSocket(newSocket);
+    const initializeSocket = async () => {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const newSocket = io(API_BASE_URL);
+      setSocket(newSocket);
 
-    // Connect to server
-    newSocket.emit('student-connect', user._id);
+      // Connect to server
+      newSocket.emit('student-connect', user._id);
 
-    // Listen for answer saved confirmation
-    newSocket.on('answer-saved', (data) => {
-      console.log('Answer saved confirmation:', data);
-      setSavingStatus(prev => ({
-        ...prev,
-        [data.questionId]: 'saved'
-      }));
-      // Clear the saved status after 2 seconds
-      setTimeout(() => {
+      // Listen for answer saved confirmation
+      newSocket.on('answer-saved', (data) => {
+        console.log('Answer saved confirmation:', data);
         setSavingStatus(prev => ({
           ...prev,
-          [data.questionId]: null
+          [data.questionId]: 'saved'
         }));
-      }, 2000);
-    });
+        // Clear the saved status after 2 seconds
+        setTimeout(() => {
+          setSavingStatus(prev => ({
+            ...prev,
+            [data.questionId]: null
+          }));
+        }, 2000);
+      });
 
-    // Listen for answer save errors
-    newSocket.on('answer-save-error', (data) => {
-      console.error('Answer save error:', data);
-      setError(data.error || 'Failed to save answer');
-    });
+      // Listen for answer save errors
+      newSocket.on('answer-save-error', (data) => {
+        console.error('Answer save error:', data);
+        setError(data.error || 'Failed to save answer');
+      });
 
-    // Listen for exam timer updates
-    newSocket.on('exam-timer-update', (data) => {
-      console.log('Exam timer update:', data);
-      if (data.examId === examId) {
-        setTimeLeft(data.timeLeft);
-        if (data.timeLeft > 0 && !examStarted) {
-          setExamStarted(true);
+      // Listen for exam timer updates
+      newSocket.on('exam-timer-update', (data) => {
+        console.log('Exam timer update:', data);
+        if (data.examId === examId) {
+          setTimeLeft(data.timeLeft);
+          if (data.timeLeft > 0 && !examStarted) {
+            setExamStarted(true);
+          }
         }
-      }
-    });
+      });
 
-    // Listen for exam ended notification
-    newSocket.on('exam-ended', (endedExamId) => {
-      console.log('Exam ended event received - endedExamId:', endedExamId, 'current examId:', examId, 'examSubmitted:', examSubmitted, 'isSubmitting:', isSubmitting);
-      if (endedExamId === examId && !examSubmitted && !isSubmitting) {
-        console.log('Auto-submitting exam due to exam-ended event');
-        handleSubmitExam(true);
-      } else {
-        console.log('Skipping auto-submit - exam already submitted or being submitted');
-      }
-    });
+      // Listen for exam ended notification
+      newSocket.on('exam-ended', (endedExamId) => {
+        console.log('Exam ended event received - endedExamId:', endedExamId, 'current examId:', examId, 'examSubmitted:', examSubmitted, 'isSubmitting:', isSubmitting);
+        if (endedExamId === examId && !examSubmitted && !isSubmitting) {
+          console.log('Auto-submitting exam due to exam-ended event');
+          handleSubmitExam(true);
+        } else {
+          console.log('Skipping auto-submit - exam already submitted or being submitted');
+        }
+      });
 
-    return () => {
-      newSocket.close();
+      return () => {
+        newSocket.close();
+      };
     };
+
+    initializeSocket();
   }, [user._id, examId, examStarted]);
 
   // Fetch exam details and questions
@@ -93,8 +99,11 @@ const StudentExamPage = ({ user }) => {
           throw new Error('Invalid exam ID format');
         }
         
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        
         // Fetch exam details
-        const examUrl = `http://localhost:5000/api/exams/${examId}`;
+        const examUrl = `${API_BASE_URL}/api/exams/${examId}`;
         console.log('Fetching exam from URL:', examUrl);
         const examRes = await fetch(examUrl, {
           headers: {
@@ -144,7 +153,7 @@ const StudentExamPage = ({ user }) => {
         }
       
         // Fetch questions for this exam
-        const questionsUrl = `http://localhost:5000/api/questions?exam=${examId}`;
+        const questionsUrl = `${API_BASE_URL}/api/questions?exam=${examId}`;
         console.log('Fetching questions from URL:', questionsUrl);
         const questionsRes = await fetch(questionsUrl, {
           headers: {
@@ -294,9 +303,12 @@ const StudentExamPage = ({ user }) => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log('Finished waiting for answers to be saved');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // First, check if a student exam record already exists
       console.log('Checking if student exam record already exists');
-      const checkStudentExamRes = await fetch(`http://localhost:5000/api/student-exams?student=${user._id}&exam=${examId}`, {
+      const checkStudentExamRes = await fetch(`${API_BASE_URL}/api/student-exams?student=${user._id}&exam=${examId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -318,7 +330,7 @@ const StudentExamPage = ({ user }) => {
         } else {
           // Create a new student exam record
           console.log('Creating new student exam record');
-          const studentExamRes = await fetch('http://localhost:5000/api/student-exams', {
+          const studentExamRes = await fetch(`${API_BASE_URL}/api/student-exams`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -348,7 +360,7 @@ const StudentExamPage = ({ user }) => {
       
       // Update student exam with submittedAt timestamp
       console.log('Updating student exam with submittedAt timestamp');
-      const updateRes = await fetch(`http://localhost:5000/api/student-exams/${studentExamId}`, {
+      const updateRes = await fetch(`${API_BASE_URL}/api/student-exams/${studentExamId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -375,7 +387,7 @@ const StudentExamPage = ({ user }) => {
         
         // Calculate score and save results
         console.log('Calculating score and saving results');
-        const calculateScoreRes = await fetch(`http://localhost:5000/api/student-exams/${studentExamId}/calculate-score`, {
+        const calculateScoreRes = await fetch(`${API_BASE_URL}/api/student-exams/${studentExamId}/calculate-score`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -403,7 +415,7 @@ const StudentExamPage = ({ user }) => {
         });
 
         try {
-          const saveResultRes = await fetch('http://localhost:5000/api/results/calculate', {
+          const saveResultRes = await fetch(`${API_BASE_URL}/api/results/calculate`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,

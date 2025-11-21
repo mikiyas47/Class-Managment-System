@@ -24,7 +24,9 @@ const AnnouncementsPage = ({ user }) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/announcements`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/announcements`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -53,8 +55,11 @@ const AnnouncementsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // First, get the courses the teacher teaches
-      const coursesResponse = await fetch(`http://localhost:5000/api/teachers/${user._id}/courses`, {
+      const coursesResponse = await fetch(`${API_BASE_URL}/api/teachers/${user._id}/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -74,7 +79,7 @@ const AnnouncementsPage = ({ user }) => {
       // Fetch class details for these classes
       const classesData = await Promise.all(classIds.map(async (classId) => {
         try {
-          const classResponse = await fetch(`http://localhost:5000/api/classes/${classId}`, {
+          const classResponse = await fetch(`${API_BASE_URL}/api/classes/${classId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -119,9 +124,12 @@ const AnnouncementsPage = ({ user }) => {
     
     try {
       const token = localStorage.getItem('token');
+      
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
       const url = editingAnnouncement 
-        ? `http://localhost:5000/api/announcements/${editingAnnouncement._id}` 
-        : 'http://localhost:5000/api/announcements';
+        ? `${API_BASE_URL}/api/announcements/${editingAnnouncement._id}` 
+        : `${API_BASE_URL}/api/announcements`;
       
       const method = editingAnnouncement ? 'PUT' : 'POST';
       
@@ -184,7 +192,10 @@ const AnnouncementsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://localhost:5000/api/announcements/${announcementId}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/announcements/${announcementId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
