@@ -34,7 +34,7 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       }
       
       // Fetch exams
-      const examsResponse = await fetch('/api/exams', {
+      const examsResponse = await fetch(`/api/exams/student/${user._id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
