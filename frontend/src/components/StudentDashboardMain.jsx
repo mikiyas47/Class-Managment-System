@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaBook, FaClipboardList, FaBell, FaUser, FaSignOutAlt } from 'react-icons/fa';
-
 import ExamRow from './ExamRow';
 
+console.log('Environment variables:');
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+
 const StudentDashboard = ({ user, token, onLogout }) => {
+  console.log('=== StudentDashboard Component Render ===');
+  console.log('User prop:', user);
+  console.log('Token prop:', token);
+  
   const [exams, setExams] = useState([]);
   const [courses, setCourses] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -13,61 +20,153 @@ const StudentDashboard = ({ user, token, onLogout }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    console.log('=== StudentDashboard useEffect triggered ===');
+    console.log('User in useEffect:', user);
+    console.log('User ID in useEffect:', user?._id);
+    console.log('Token in useEffect:', token);
+    
+    if (user && user._id) {
+      console.log('Calling fetchData...');
+      fetchData();
+    } else {
+      console.log('No user or user ID, skipping fetchData');
+      if (!user) {
+        console.error('User prop is null or undefined');
+      }
+      if (user && !user._id) {
+        console.error('User prop exists but has no _id:', user);
+      }
+    }
+  }, [user, token]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('=== Fetching Student Data ===');
+      console.log('User ID:', user._id);
+      console.log('User data:', user);
+      
+      const token = localStorage.getItem('token');
+      console.log('Token exists:', !!token);
+      if (token) {
+        console.log('Token length:', token.length);
+        // Log first and last 10 characters of token for debugging (but not the full token for security)
+        console.log('Token preview:', token.substring(0, 10) + '...' + token.substring(token.length - 10));
+      } else {
+        console.error('No authentication token found!');
+        setError('Authentication error: No token found');
+        return;
+      }
+      
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      console.log('API Base URL:', API_BASE_URL);
       
       // Fetch student's courses
+      console.log('Fetching courses...');
       const coursesResponse = await fetch(`/api/students/${user._id}/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      console.log('Courses response status:', coursesResponse.status);
       
       if (coursesResponse.ok) {
         const coursesData = await coursesResponse.json();
+        console.log('Courses data:', coursesData);
         setCourses(coursesData.data || []);
+        console.log('Number of courses:', (coursesData.data || []).length);
+      } else {
+        console.error('Failed to fetch courses:', coursesResponse.status);
+        const errorText = await coursesResponse.text();
+        console.error('Courses error response:', errorText);
       }
       
       // Fetch exams
-      const examsResponse = await fetch(`/api/exams/student/${user._id}`, {
+      console.log('Fetching exams from:', `${API_BASE_URL}/api/exams/student/${user._id}`);
+      const examsResponse = await fetch(`${API_BASE_URL}/api/exams/student/${user._id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      console.log('Exams response status:', examsResponse.status);
+      console.log('Exams response headers:', [...examsResponse.headers.entries()]);
+      
+      // Check for CORS or network issues
+      if (!examsResponse.ok) {
+        console.error('Exams fetch failed:');
+        console.error('  Status:', examsResponse.status);
+        console.error('  Status Text:', examsResponse.statusText);
+        console.error('  URL:', examsResponse.url);
+        
+        // Try to get error details
+        try {
+          const errorText = await examsResponse.text();
+          console.error('  Error response body:', errorText);
+        } catch (e) {
+          console.error('  Could not read error response body:', e);
+        }
+        
+        setError(`Failed to fetch exams: ${examsResponse.status} ${examsResponse.statusText}`);
+        return;
+      }
       
       if (examsResponse.ok) {
         const examsData = await examsResponse.json();
+        console.log('Exams data received:', examsData);
         setExams(examsData.data || []);
+        console.log('Exams set in state:', examsData.data || []);
+      } else {
+        const errorText = await examsResponse.text();
+        console.error('Exams fetch failed with status:', examsResponse.status);
+        console.error('Exams fetch error response:', errorText);
+        setError(`Failed to fetch exams: ${examsResponse.status} - ${errorText}`);
       }
       
       // Fetch announcements
-      const announcementsResponse = await fetch('/api/announcements', {
+      console.log('Fetching announcements...');
+      const announcementsResponse = await fetch(`${API_BASE_URL}/api/announcements`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      console.log('Announcements response status:', announcementsResponse.status);
       
       if (announcementsResponse.ok) {
         const announcementsData = await announcementsResponse.json();
+        console.log('Announcements data:', announcementsData);
         setAnnouncements(announcementsData.data || []);
       }
     } catch (err) {
+      console.error('Error in fetchData:', err);
       setError(err.message);
     } finally {
+      console.log('Fetch data completed');
       setLoading(false);
     }
   };
 
   const calculateExamEndTime = (exam) => {
+    console.log('Calculating end time for exam:', exam);
+    console.log('Exam ID:', exam._id);
+    console.log('Exam start time:', exam.startTime);
+    console.log('Exam duration (minutes):', exam.duration);
+    
     const startTime = new Date(exam.startTime);
-    return new Date(startTime.getTime() + exam.duration * 60000);
+    console.log('Parsed start time:', startTime);
+    console.log('Parsed start time timestamp:', startTime.getTime());
+    
+    const durationMs = exam.duration * 60000;
+    console.log('Duration in milliseconds:', durationMs);
+    
+    const endTime = new Date(startTime.getTime() + durationMs);
+    console.log('Calculated end time:', endTime);
+    console.log('Calculated end time timestamp:', endTime.getTime());
+    
+    return endTime;
   };
 
   if (loading) {
@@ -184,6 +283,7 @@ const StudentDashboard = ({ user, token, onLogout }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
+                {console.log('Rendering exams:', exams)}
                 {exams.map((exam) => (
                   <ExamRow 
                     key={exam._id} 

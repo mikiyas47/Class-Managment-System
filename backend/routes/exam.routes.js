@@ -558,6 +558,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 router.get('/student/:id', authenticateToken, async (req, res) => {
   try {
     const { id: studentId } = req.params;
+    console.log('=== Student Exams Route ===');
+    console.log('Student ID:', studentId);
+    console.log('Request user:', req.user);
 
     // Import required models
     const Student = (await import('../Student.js')).default;
@@ -566,8 +569,13 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
 
     // Get the student
     const student = await Student.findById(studentId).populate('class');
+    console.log('Found student:', student ? 'Yes' : 'No');
+    if (student) {
+      console.log('Student class:', student.class);
+    }
     
     if (!student) {
+      console.log('Student not found for ID:', studentId);
       return res.status(404).json({
         message: 'Student not found',
         status: 'error'
@@ -576,7 +584,9 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
 
     // Get regular courses for the student's class
     const regularCourses = await Course.find({ class: student.class._id });
+    console.log('Regular courses found:', regularCourses.length);
     const regularCourseIds = regularCourses.map(course => course._id);
+    console.log('Regular course IDs:', regularCourseIds);
     
     // Get added courses for this student (including retake courses)
     // Include both 'enrolled' and 'pending' status records
@@ -584,14 +594,18 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
       student: studentId, 
       status: { $in: ['enrolled', 'pending'] } 
     }).populate('course');
+    console.log('Added courses records found:', addedCoursesRecords.length);
     
     const addedCourseIds = addedCoursesRecords.map(record => record.course._id);
+    console.log('Added course IDs:', addedCourseIds);
     
     // Combine all course IDs
     const allCourseIds = [...regularCourseIds, ...addedCourseIds];
+    console.log('All course IDs:', allCourseIds);
     
     // If student has no courses, return empty array
     if (allCourseIds.length === 0) {
+      console.log('Student has no courses, returning empty exams array');
       return res.json({
         message: 'Exams retrieved successfully',
         data: [],
@@ -602,8 +616,10 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
     
     // Get exams for these courses with time-based filtering for students
     const now = new Date();
+    console.log('Current time (local):', now);
     // Adjust now time to match how we're storing exam start times
     const nowAdjusted = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Add 3 hours for Nairobi time
+    console.log('Current time (adjusted for Nairobi):', nowAdjusted);
     
     let exams = await Exam.find({
       course: { $in: allCourseIds },
@@ -614,21 +630,31 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
       .populate('teacher')
       .sort({ createdAt: -1 });
     
+    console.log('Exams found before filtering:', exams.length);
+    console.log('Exams data:', JSON.stringify(exams, null, 2));
+    
     // Filter exams that haven't ended yet
     const filteredExams = exams.filter(exam => {
       // Calculate end time: startTime + duration (in minutes)
       // Adjust exam start time for proper calculation
       const examStartAdjusted = new Date(exam.startTime.getTime() + 3 * 60 * 60 * 1000);
       const endTime = new Date(examStartAdjusted.getTime() + exam.duration * 60000);
-      return nowAdjusted < endTime;
+      const isNotEnded = nowAdjusted < endTime;
+      console.log(`Exam ${exam._id} - Start: ${examStartAdjusted}, End: ${endTime}, Now: ${nowAdjusted}, Not ended: ${isNotEnded}`);
+      return isNotEnded;
     });
     
     // Also filter to only show exams that have started (with a small buffer for timing)
     const fiveSecondsAgo = new Date(nowAdjusted.getTime() - 5000);
     const finalExams = filteredExams.filter(exam => {
       const examStartAdjusted = new Date(exam.startTime.getTime() + 3 * 60 * 60 * 1000);
-      return examStartAdjusted <= nowAdjusted || examStartAdjusted <= fiveSecondsAgo;
+      const hasStarted = examStartAdjusted <= nowAdjusted || examStartAdjusted <= fiveSecondsAgo;
+      console.log(`Exam ${exam._id} - Start: ${examStartAdjusted}, Now: ${nowAdjusted}, 5s ago: ${fiveSecondsAgo}, Has started: ${hasStarted}`);
+      return hasStarted;
     });
+
+    console.log('Final exams count:', finalExams.length);
+    console.log('Final exams data:', JSON.stringify(finalExams, null, 2));
 
     res.json({
       message: 'Exams retrieved successfully',
