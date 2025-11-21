@@ -10,7 +10,7 @@ import {
   FaSignOutAlt
 } from 'react-icons/fa';
 
-const DepartmentHeadSidebar = ({ isOpen, onClose, activeTab, setActiveTab }) => {
+const DepartmentHeadSidebar = ({ isOpen, onClose, activeTab, setActiveTab, onLogout }) => {
   // Menu items without router paths for direct rendering
   const menuItems = [
     { 
@@ -83,9 +83,11 @@ const DepartmentHeadSidebar = ({ isOpen, onClose, activeTab, setActiveTab }) => 
         <button
           className="flex items-center w-full px-4 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900 rounded-lg transition-colors"
           onClick={() => {
-            // Handle logout
+            // Handle logout properly by calling the onLogout function
+            if (onLogout) {
+              onLogout();
+            }
             if (onClose) onClose();
-            window.location.href = '/login';
           }}
         >
           <FaSignOutAlt className="mr-3" />

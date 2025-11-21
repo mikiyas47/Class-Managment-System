@@ -167,6 +167,7 @@ const DepartmentHeadDashboard = ({ user, onLogout }) => {
             onClose={toggleSidebar} 
             activeTab={activeTab}
             setActiveTab={setActiveTab}
+            onLogout={onLogout}
           />
         </div>
       </div>
