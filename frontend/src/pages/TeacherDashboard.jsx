@@ -14,8 +14,11 @@ const TeacherDashboard = ({ user, onLogout }) => {
       try {
         const token = localStorage.getItem('token');
         
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        
         // Fetch teacher's courses
-        const coursesRes = await fetch(`http://localhost:5000/api/teachers/${user._id}/courses`, {
+        const coursesRes = await fetch(`${API_BASE_URL}/api/teachers/${user._id}/courses`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -28,7 +31,7 @@ const TeacherDashboard = ({ user, onLogout }) => {
         }
 
         // Fetch announcements
-        const announcementsRes = await fetch('http://localhost:5000/api/announcements', {
+        const announcementsRes = await fetch(`${API_BASE_URL}/api/announcements`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

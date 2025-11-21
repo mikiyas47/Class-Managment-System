@@ -15,8 +15,11 @@ const MyClassesPage = ({ user }) => {
       setLoading(true);
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Fetch courses assigned to this teacher
-      const response = await fetch(`http://localhost:5000/api/teachers/${user._id}/courses`, {
+      const response = await fetch(`${API_BASE_URL}/api/teachers/${user._id}/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -36,7 +39,7 @@ const MyClassesPage = ({ user }) => {
             const classId = course.class._id || course.class;
             
             // Fetch student count for the class
-            const studentResponse = await fetch(`http://localhost:5000/api/students?class=${classId}`, {
+            const studentResponse = await fetch(`${API_BASE_URL}/api/students?class=${classId}`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -50,7 +53,7 @@ const MyClassesPage = ({ user }) => {
             }
             
             // Fetch assignment count for the class (filtered by this teacher)
-            const assignmentResponse = await fetch(`http://localhost:5000/api/assignments`, {
+            const assignmentResponse = await fetch(`${API_BASE_URL}/api/assignments`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'

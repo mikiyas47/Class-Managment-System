@@ -32,8 +32,11 @@ const TeacherDashboard = ({ user, onLogout, courses = [], announcements = [], lo
       try {
         const token = localStorage.getItem('token');
         
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        
         // Fetch total students count for this teacher only
-        const studentsRes = await fetch(`http://localhost:5000/api/teachers/${user._id}/students`, {
+        const studentsRes = await fetch(`${API_BASE_URL}/api/teachers/${user._id}/students`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -59,14 +62,14 @@ const TeacherDashboard = ({ user, onLogout, courses = [], announcements = [], lo
         });
         
         // Fetch recent activity (assignments and exams) - only for this teacher
-        const assignmentsRes = await fetch('http://localhost:5000/api/assignments', {
+        const assignmentsRes = await fetch(`${API_BASE_URL}/api/assignments`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
         
-        const examsRes = await fetch('http://localhost:5000/api/exams', {
+        const examsRes = await fetch(`${API_BASE_URL}/api/exams`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

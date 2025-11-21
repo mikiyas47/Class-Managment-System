@@ -44,7 +44,9 @@ const AddStudentsPage = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/add-students', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/add-students`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -67,7 +69,9 @@ const AddStudentsPage = () => {
     // Keeping it for backward compatibility
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/students', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/students`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -86,7 +90,9 @@ const AddStudentsPage = () => {
     // Keeping it for backward compatibility
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/courses', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -103,7 +109,9 @@ const AddStudentsPage = () => {
   const fetchClasses = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/classes', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/classes`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -121,7 +129,9 @@ const AddStudentsPage = () => {
   const fetchStudentsByClass = async (classId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/add-students/students-by-class/${classId}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/add-students/students-by-class/${classId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -143,7 +153,9 @@ const AddStudentsPage = () => {
   const fetchCoursesByClass = async (classId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/add-students/courses-by-class/${classId}`, {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      const response = await fetch(`${API_BASE_URL}/api/add-students/courses-by-class/${classId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -245,9 +257,11 @@ const AddStudentsPage = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
       const url = editingAddStudent 
-        ? `http://localhost:5000/api/add-students/${editingAddStudent._id}`
-        : 'http://localhost:5000/api/add-students';
+        ? `${API_BASE_URL}/api/add-students/${editingAddStudent._id}`
+        : `${API_BASE_URL}/api/add-students`;
       
       const method = editingAddStudent ? 'PUT' : 'POST';
       
@@ -305,7 +319,9 @@ const AddStudentsPage = () => {
     if (window.confirm('Are you sure you want to delete this add student record?')) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/add-students/${id}`, {
+        // Import the API base URL
+        const { API_BASE_URL } = await import('../api');
+        const response = await fetch(`${API_BASE_URL}/api/add-students/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

@@ -23,7 +23,10 @@ const AddCoursePage = () => {
   // Fetch courses
   const fetchCourses = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/courses', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/courses`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -45,7 +48,10 @@ const AddCoursePage = () => {
   // Fetch departments
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/departments', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/departments`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -63,7 +69,10 @@ const AddCoursePage = () => {
   // Fetch teachers
   const fetchTeachers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/teachers', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/teachers`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -81,7 +90,10 @@ const AddCoursePage = () => {
   // Fetch classes
   const fetchClasses = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/classes', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/classes`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -114,7 +126,10 @@ const AddCoursePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/courses', {
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const response = await fetch(`${API_BASE_URL}/api/courses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
