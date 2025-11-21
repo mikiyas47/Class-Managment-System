@@ -288,18 +288,15 @@ const ExamsPage = ({ user }) => {
     // Create a new Date object from the dateString
     const date = new Date(dateString);
     
-    // Format the date in Nairobi timezone (UTC+3)
-    const options = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Africa/Nairobi'
-    };
+    // Format the date without timezone conversion
+    // This will display the time exactly as stored in the database
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
     
-    // Use toLocaleDateString with Nairobi timezone
-    return date.toLocaleDateString('en-US', options);
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
   };
 
   const getClassInfo = (classId) => {

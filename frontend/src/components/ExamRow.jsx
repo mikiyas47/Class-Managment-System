@@ -28,27 +28,21 @@ const ExamRow = ({ exam, examEndTime, navigate }) => {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Format date in Nairobi timezone
+  // Format date without timezone conversion
   const formatNairobiDate = (dateString) => {
     const date = new Date(dateString);
-    const options = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      timeZone: 'Africa/Nairobi'
-    };
-    return date.toLocaleDateString('en-US', options);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
-  // Format time in Nairobi timezone
+  // Format time without timezone conversion
   const formatNairobiTime = (dateString) => {
     const date = new Date(dateString);
-    const options = { 
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Africa/Nairobi'
-    };
-    return date.toLocaleTimeString('en-US', options);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   return (

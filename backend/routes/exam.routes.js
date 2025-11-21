@@ -280,13 +280,9 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
     
-    // Convert startTime to Nairobi timezone (UTC+3)
-    // The frontend sends time in ISO format, we need to parse it and convert to Nairobi time
-    // First, parse the startTime as a moment object
-    const browserTime = moment(startTime);
-    // Then convert it to Nairobi timezone
-    const nairobiTime = browserTime.tz('Africa/Nairobi');
-    startTime = nairobiTime.toDate();
+    // Parse startTime directly without timezone conversion
+    // This will store the time exactly as entered by the user
+    const examStartTime = new Date(startTime);
     
     const exam = new Exam({
       class: classId,
@@ -294,7 +290,7 @@ router.post('/', authenticateToken, async (req, res) => {
       course,
       title,
       duration: parseInt(duration),
-      startTime
+      startTime: examStartTime
     });
     
     await exam.save();
@@ -397,13 +393,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
       });
     }
     
-    // Convert startTime to Nairobi timezone (UTC+3)
-    // The frontend sends time in ISO format, we need to parse it and convert to Nairobi time
-    // First, parse the startTime as a moment object
-    const browserTime = moment(startTime);
-    // Then convert it to Nairobi timezone
-    const nairobiTime = browserTime.tz('Africa/Nairobi');
-    startTime = nairobiTime.toDate();
+    // Parse startTime directly without timezone conversion
+    // This will store the time exactly as entered by the user
+    const examStartTime = new Date(startTime);
     
     const exam = await Exam.findByIdAndUpdate(
       id,
@@ -413,7 +405,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         course,
         title,
         duration: parseInt(duration),
-        startTime
+        startTime: examStartTime
       },
       { new: true, runValidators: true }
     ).populate('class', 'year semester').populate('teacher', 'name email').populate('course', 'subject code');
