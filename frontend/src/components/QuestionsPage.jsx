@@ -171,6 +171,9 @@ const QuestionsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Create all questions
       const createdQuestions = [];
       for (const question of formData.questions) {
@@ -274,6 +277,9 @@ const QuestionsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       const response = await fetch(`${API_BASE_URL}/api/questions/${editingQuestion._id}`, {
         method: 'PUT',
         headers: {
@@ -326,6 +332,9 @@ const QuestionsPage = ({ user }) => {
     
     try {
       const token = localStorage.getItem('token');
+      
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
       
       const response = await fetch(`${API_BASE_URL}/api/questions/${questionId}`, {
         method: 'DELETE',
