@@ -166,6 +166,10 @@ router.post('/', authenticateToken, async (req, res) => {
 // Update student by ID
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
+    console.log('=== Student Update Endpoint Called ===');
+    console.log('Request params:', req.params);
+    console.log('Request body:', req.body);
+    
     const { id } = req.params;
     console.log('Student update request received:', { id, body: req.body });
     const { name, userId, department, class: classId, email, phoneNo, password } = req.body;
