@@ -51,9 +51,8 @@ router.get('/', authenticateToken, async (req, res) => {
     // (startTime <= now AND now < endTime where endTime = startTime + duration)
     else if (user && user.userType === 'student') {
       const now = new Date();
-      // Adjust now time to match how we're storing exam start times
-      const nowAdjusted = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Add 3 hours for Nairobi time
-      query.startTime = { $lte: nowAdjusted };
+      // Use UTC for consistent time comparisons
+      query.startTime = { $lte: now };
       // We'll filter by endTime after fetching since it requires calculation
     }
 
@@ -68,22 +67,17 @@ router.get('/', authenticateToken, async (req, res) => {
     let filteredExams = exams;
     if (user && user.userType === 'student') {
       const now = new Date();
-      // Adjust now time to match how we're storing exam start times
-      const nowAdjusted = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Add 3 hours for Nairobi time
       
       filteredExams = exams.filter(exam => {
         // Calculate end time: startTime + duration (in minutes)
-        // Adjust exam start time for proper calculation
-        const examStartAdjusted = new Date(exam.startTime.getTime() + 3 * 60 * 60 * 1000);
-        const endTime = new Date(examStartAdjusted.getTime() + exam.duration * 60000);
-        return nowAdjusted < endTime;
+        const endTime = new Date(exam.startTime.getTime() + exam.duration * 60000);
+        return now < endTime;
       });
       
       // Also filter to only show exams that have started (with a small buffer for timing)
-      const fiveSecondsAgo = new Date(nowAdjusted.getTime() - 5000);
+      const fiveSecondsAgo = new Date(now.getTime() - 5000);
       filteredExams = filteredExams.filter(exam => {
-        const examStartAdjusted = new Date(exam.startTime.getTime() + 3 * 60 * 60 * 1000);
-        return examStartAdjusted <= nowAdjusted || examStartAdjusted <= fiveSecondsAgo;
+        return exam.startTime <= now || exam.startTime <= fiveSecondsAgo;
       });
     }
 
@@ -92,15 +86,13 @@ router.get('/', authenticateToken, async (req, res) => {
     console.log('Found exams:', exams.length);
     if (user && user.userType === 'student') {
       const now = new Date();
-      // Adjust now time to match how we're storing exam start times
-      const nowAdjusted = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Add 3 hours for Nairobi time
       
       console.log('Exams available to student:', exams.map(e => ({
         id: e._id,
         title: e.title,
-        startTime: new Date(e.startTime.getTime() + 3 * 60 * 60 * 1000),
+        startTime: e.startTime,
         duration: e.duration,
-        now: nowAdjusted
+        now: now
       })));
     }
     
@@ -174,12 +166,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
       console.log('Exam exists check:', examExists ? 'Yes' : 'No');
       if (examExists && user && user.userType === 'student') {
         const now = new Date();
-        // Adjust now time to match how we're storing exam start times
-        const nowAdjusted = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Add 3 hours for Nairobi time
-        // Adjust exam start time for comparison
-        const examStartAdjusted = new Date(examExists.startTime.getTime() + 3 * 60 * 60 * 1000);
-        console.log('Exam start time:', examStartAdjusted, 'Current time:', nowAdjusted);
-        if (examStartAdjusted > nowAdjusted) {
+        console.log('Exam start time:', examExists.startTime, 'Current time:', now);
+        if (examExists.startTime > now) {
           return res.status(403).json({
             message: 'This exam is not available yet. Please check back at the scheduled time.',
             status: 'error'
@@ -196,13 +184,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
     // If user is a student, check if the exam is currently available
     if (user && user.userType === 'student') {
       const now = new Date();
-      // Adjust now time to match how we're storing exam start times
-      const nowAdjusted = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Add 3 hours for Nairobi time
       
       // Check if exam has started
-      // Adjust exam start time for comparison
-      const examStartAdjusted = new Date(exam.startTime.getTime() + 3 * 60 * 60 * 1000);
-      if (examStartAdjusted > nowAdjusted) {
+      if (exam.startTime > now) {
         return res.status(403).json({
           message: 'This exam is not available yet. Please check back at the scheduled time.',
           status: 'error'
@@ -210,8 +194,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
       }
       
       // Check if exam has ended
-      const endTime = new Date(examStartAdjusted.getTime() + exam.duration * 60000);
-      if (nowAdjusted >= endTime) {
+      const endTime = new Date(exam.startTime.getTime() + exam.duration * 60000);
+      if (now >= endTime) {
         return res.status(403).json({
           message: 'This exam is no longer available. The exam time has ended.',
           status: 'error'
@@ -616,14 +600,11 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
     
     // Get exams for these courses with time-based filtering for students
     const now = new Date();
-    console.log('Current time (local):', now);
-    // Adjust now time to match how we're storing exam start times
-    const nowAdjusted = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Add 3 hours for Nairobi time
-    console.log('Current time (adjusted for Nairobi):', nowAdjusted);
+    console.log('Current time:', now);
     
     let exams = await Exam.find({
       course: { $in: allCourseIds },
-      startTime: { $lte: nowAdjusted }
+      startTime: { $lte: now }
     })
       .populate('course', 'subject')
       .populate('class')
@@ -636,20 +617,17 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
     // Filter exams that haven't ended yet
     const filteredExams = exams.filter(exam => {
       // Calculate end time: startTime + duration (in minutes)
-      // Adjust exam start time for proper calculation
-      const examStartAdjusted = new Date(exam.startTime.getTime() + 3 * 60 * 60 * 1000);
-      const endTime = new Date(examStartAdjusted.getTime() + exam.duration * 60000);
-      const isNotEnded = nowAdjusted < endTime;
-      console.log(`Exam ${exam._id} - Start: ${examStartAdjusted}, End: ${endTime}, Now: ${nowAdjusted}, Not ended: ${isNotEnded}`);
+      const endTime = new Date(exam.startTime.getTime() + exam.duration * 60000);
+      const isNotEnded = now < endTime;
+      console.log(`Exam ${exam._id} - Start: ${exam.startTime}, End: ${endTime}, Now: ${now}, Not ended: ${isNotEnded}`);
       return isNotEnded;
     });
     
     // Also filter to only show exams that have started (with a small buffer for timing)
-    const fiveSecondsAgo = new Date(nowAdjusted.getTime() - 5000);
+    const fiveSecondsAgo = new Date(now.getTime() - 5000);
     const finalExams = filteredExams.filter(exam => {
-      const examStartAdjusted = new Date(exam.startTime.getTime() + 3 * 60 * 60 * 1000);
-      const hasStarted = examStartAdjusted <= nowAdjusted || examStartAdjusted <= fiveSecondsAgo;
-      console.log(`Exam ${exam._id} - Start: ${examStartAdjusted}, Now: ${nowAdjusted}, 5s ago: ${fiveSecondsAgo}, Has started: ${hasStarted}`);
+      const hasStarted = exam.startTime <= now || exam.startTime <= fiveSecondsAgo;
+      console.log(`Exam ${exam._id} - Start: ${exam.startTime}, Now: ${now}, 5s ago: ${fiveSecondsAgo}, Has started: ${hasStarted}`);
       return hasStarted;
     });
 

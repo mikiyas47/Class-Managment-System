@@ -41,13 +41,10 @@ const ExamRow = ({ exam, examEndTime, navigate }) => {
   const isExamAvailable = () => {
     const now = new Date();
     const startTime = new Date(exam.startTime);
-    // Adjust for Nairobi timezone (UTC+3)
-    const startTimeAdjusted = new Date(startTime.getTime() + 3 * 60 * 60 * 1000);
-    const isAvailable = now >= startTimeAdjusted;
+    const isAvailable = now >= startTime;
     console.log('Checking exam availability:');
     console.log('  Current time:', now);
-    console.log('  Exam start time (raw):', startTime);
-    console.log('  Exam start time (adjusted):', startTimeAdjusted);
+    console.log('  Exam start time:', startTime);
     console.log('  Is available:', isAvailable);
     return isAvailable;
   };
@@ -74,33 +71,27 @@ const ExamRow = ({ exam, examEndTime, navigate }) => {
   };
 
   // Format date in a consistent way
-  const formatNairobiDate = (dateString) => {
+  const formatDisplayDate = (dateString) => {
     console.log('Formatting date:', dateString);
     const date = new Date(dateString);
     console.log('Parsed date:', date);
-    // Adjust for Nairobi timezone (UTC+3)
-    const nairobiTime = new Date(date.getTime() + 3 * 60 * 60 * 1000);
-    console.log('Nairobi time:', nairobiTime);
   
-    const year = nairobiTime.getFullYear();
-    const month = String(nairobiTime.getMonth() + 1).padStart(2, '0');
-    const day = String(nairobiTime.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     const formatted = `${year}-${month}-${day}`;
     console.log('Formatted date:', formatted);
     return formatted;
   };
 
   // Format time in a consistent way
-  const formatNairobiTime = (dateString) => {
+  const formatDisplayTime = (dateString) => {
     console.log('Formatting time:', dateString);
     const date = new Date(dateString);
     console.log('Parsed time:', date);
-    // Adjust for Nairobi timezone (UTC+3)
-    const nairobiTime = new Date(date.getTime() + 3 * 60 * 60 * 1000);
-    console.log('Nairobi time:', nairobiTime);
   
-    const hours = String(nairobiTime.getHours()).padStart(2, '0');
-    const minutes = String(nairobiTime.getMinutes()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
     const formatted = `${hours}:${minutes}`;
     console.log('Formatted time:', formatted);
     return formatted;
@@ -116,8 +107,8 @@ const ExamRow = ({ exam, examEndTime, navigate }) => {
     <tr className="hover:bg-gray-50">
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{exam.title}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{exam.course?.subject}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatNairobiDate(exam.startTime)}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatNairobiTime(exam.startTime)}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDisplayDate(exam.startTime)}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDisplayTime(exam.startTime)}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{exam.duration} minutes</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
