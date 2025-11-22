@@ -73,17 +73,23 @@ const SettingsPage = ({ user }) => {
         endpoint = `${API_BASE_URL}/api/students/change-password`;
       }
       
+      // Prepare request data
+      const requestData = {
+        currentPassword,
+        newPassword
+      };
+      
       // Debug logging
       console.log('=== Password Change Request ===');
       console.log('User:', user);
       console.log('User type:', user?.userType);
       console.log('API Base URL:', API_BASE_URL);
       console.log('Endpoint:', endpoint);
-      console.log('Request body:', {
-        currentPassword: currentPassword ? '***' : 'EMPTY',
-        newPassword: newPassword ? '***' : 'EMPTY',
-        currentPasswordLength: currentPassword?.length || 0,
-        newPasswordLength: newPassword?.length || 0
+      console.log('Request data:', {
+        currentPassword: requestData.currentPassword ? '[HIDDEN]' : 'EMPTY',
+        newPassword: requestData.newPassword ? '[HIDDEN]' : 'EMPTY',
+        currentPasswordType: typeof requestData.currentPassword,
+        newPasswordType: typeof requestData.newPassword
       });
       
       const response = await fetch(endpoint, {
@@ -92,10 +98,7 @@ const SettingsPage = ({ user }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword
-        })
+        body: JSON.stringify(requestData)
       });
       
       console.log('Response status:', response.status);

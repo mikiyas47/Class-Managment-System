@@ -1012,36 +1012,68 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
 router.put('/change-password', authenticateToken, async (req, res) => {
   try {
     console.log('=== Student Change Password Request ===');
-    console.log('Full request object:', {
+    console.log('Full request details:', {
       method: req.method,
       url: req.url,
       headers: req.headers,
       body: req.body,
-      user: req.user
+      user: req.user,
+      contentType: req.headers['content-type']
     });
+    
+    // Check if body is properly parsed
+    if (!req.body || typeof req.body !== 'object') {
+      console.log('ERROR: Request body is not a valid object');
+      return res.status(400).json({
+        message: 'Invalid request body format',
+        status: 'error'
+      });
+    }
     
     const { currentPassword, newPassword } = req.body;
     const studentId = req.user.id; // Get student ID from authenticated token
     
     console.log('Student ID:', studentId);
-    console.log('Current password provided:', !!currentPassword);
-    console.log('New password provided:', !!newPassword);
-    console.log('Current password length:', currentPassword ? currentPassword.length : 'N/A');
-    console.log('New password length:', newPassword ? newPassword.length : 'N/A');
+    console.log('Current password provided:', currentPassword ? 'YES' : 'NO');
+    console.log('New password provided:', newPassword ? 'YES' : 'NO');
+    console.log('Current password type:', typeof currentPassword);
+    console.log('New password type:', typeof newPassword);
+    console.log('Current password value:', currentPassword ? '[HIDDEN]' : 'undefined');
+    console.log('New password value:', newPassword ? '[HIDDEN]' : 'undefined');
     
-    // Validate required fields
-    if (!currentPassword) {
-      console.log('Validation failed: Current password is missing');
+    // Validate that body contains expected fields
+    const bodyKeys = Object.keys(req.body);
+    console.log('Request body keys:', bodyKeys);
+    
+    // Validate required fields with more specific checks
+    if (currentPassword === undefined || currentPassword === null) {
+      console.log('ERROR: Current password is undefined or null');
       return res.status(400).json({
         message: 'Current password is required',
         status: 'error'
       });
     }
     
-    if (!newPassword) {
-      console.log('Validation failed: New password is missing');
+    if (newPassword === undefined || newPassword === null) {
+      console.log('ERROR: New password is undefined or null');
       return res.status(400).json({
         message: 'New password is required',
+        status: 'error'
+      });
+    }
+    
+    if (typeof currentPassword !== 'string') {
+      console.log('ERROR: Current password is not a string');
+      return res.status(400).json({
+        message: 'Current password must be a string',
+        status: 'error'
+      });
+    }
+    
+    if (typeof newPassword !== 'string') {
+      console.log('ERROR: New password is not a string');
+      return res.status(400).json({
+        message: 'New password must be a string',
         status: 'error'
       });
     }
