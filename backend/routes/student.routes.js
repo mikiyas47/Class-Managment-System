@@ -1007,11 +1007,18 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
 // Change student password
 router.put('/change-password', authenticateToken, async (req, res) => {
   try {
+    console.log('=== Student Change Password Request ===');
+    console.log('Request body:', req.body);
+    console.log('User from token:', req.user);
+    
     const { currentPassword, newPassword } = req.body;
     const studentId = req.user.id; // Get student ID from authenticated token
     
+    console.log('Student ID:', studentId);
+    
     // Validate required fields
     if (!currentPassword || !newPassword) {
+      console.log('Validation failed: Missing required fields');
       return res.status(400).json({
         message: 'Current password and new password are required',
         status: 'error'
@@ -1020,6 +1027,7 @@ router.put('/change-password', authenticateToken, async (req, res) => {
     
     // Validate password length
     if (newPassword.length < 6) {
+      console.log('Validation failed: New password too short');
       return res.status(400).json({
         message: 'New password must be at least 6 characters long',
         status: 'error'
@@ -1028,18 +1036,29 @@ router.put('/change-password', authenticateToken, async (req, res) => {
     
     // Find the student
     const student = await Student.findById(studentId);
+    console.log('Student found:', !!student);
     
     if (!student) {
+      console.log('Student not found');
       return res.status(404).json({
         message: 'Student not found',
         status: 'error'
       });
     }
     
+    console.log('Student data:', {
+      id: student._id,
+      name: student.name,
+      email: student.email
+    });
+    
     // Check if current password is correct
+    console.log('Comparing passwords...');
     const isMatch = await student.comparePassword(currentPassword);
+    console.log('Password comparison result:', isMatch);
     
     if (!isMatch) {
+      console.log('Current password is incorrect');
       return res.status(400).json({
         message: 'Current password is incorrect',
         status: 'error'
@@ -1047,8 +1066,10 @@ router.put('/change-password', authenticateToken, async (req, res) => {
     }
     
     // Update password
+    console.log('Updating password...');
     student.password = newPassword;
     await student.save();
+    console.log('Password updated successfully');
     
     res.json({
       message: 'Password changed successfully',
