@@ -62,8 +62,17 @@ const AddAdminPage = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // Import the API base URL
-      const { API_BASE_URL } = await import('../api');
+      // Import the API base URL synchronously
+      let API_BASE_URL;
+      try {
+        const apiModule = await import('../api');
+        API_BASE_URL = apiModule.API_BASE_URL;
+      } catch (importError) {
+        console.error('Failed to import API module:', importError);
+        setError('Failed to initialize API connection');
+        setLoading(false);
+        return;
+      }
       
       const response = await fetch(`${API_BASE_URL}/api/admins`, {
         method: 'POST',

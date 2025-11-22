@@ -1,11 +1,9 @@
 // API utility functions for communicating with the backend
 
 // For production, replace with your actual Render backend URL
-console.log('NODE_ENV:', process.env.NODE_ENV);
 export const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://class-managment-system.onrender.com' 
   : 'http://localhost:5000';
-console.log('API_BASE_URL:', API_BASE_URL);
 
 export const api = {
   // Fetch basic backend status

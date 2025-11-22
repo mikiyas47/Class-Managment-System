@@ -164,3 +164,5 @@ const ExamRow = ({ exam, examEndTime, navigate }) => {
     </tr>
   );
 };
+
+export default ExamRow;
