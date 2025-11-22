@@ -55,7 +55,8 @@ const AdminSidebar = ({ activeNav, setActiveNav, onLogout, user }) => {
     dashboard: false,
     departments: false,
     'department-heads': false,
-    settings: false
+    settings: false,
+    'add-admin': false
   });
 
   const toggleSubItems = (itemId) => {
