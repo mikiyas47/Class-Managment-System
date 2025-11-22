@@ -1,11 +1,11 @@
 // API utility functions for communicating with the backend
 
 // For production, replace with your actual Render backend URL
-// Use a fallback for environments where process.env is not defined
-const NODE_ENV = typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : 'production';
-export const API_BASE_URL = NODE_ENV === 'production' 
+console.log('NODE_ENV:', process.env.NODE_ENV);
+export const API_BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://class-managment-system.onrender.com' 
   : 'http://localhost:5000';
+console.log('API_BASE_URL:', API_BASE_URL);
 
 export const api = {
   // Fetch basic backend status

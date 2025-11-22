@@ -21,24 +21,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  
-  console.log('=== Authentication Middleware ===');
-  console.log('Auth header:', authHeader);
-  console.log('Token:', token);
-  console.log('Request path:', req.path);
-  console.log('Request method:', req.method);
 
   if (!token) {
-    console.log('No token provided');
     return res.status(401).json({ message: 'No token provided', status: 'error' });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      console.log('Token verification error:', err);
       return res.status(403).json({ message: 'Invalid or expired token', status: 'error' });
     }
-    console.log('Token verified successfully, user:', user);
     req.user = user;
     next();
   });
@@ -65,9 +56,7 @@ const io = new Server(server, {
       "http://localhost:5173", 
       "http://localhost:5174", 
       "http://localhost:5175",
-      "https://class-managment-system.vercel.app",
-      /\.vercel\.app$/,  // Allow all Vercel deployments
-      /\.class-managment-system\.vercel\.app$/  // Specific pattern for your app
+      "https://class-managment-system.vercel.app"  // Your Vercel frontend URL
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true
@@ -225,27 +214,15 @@ app.use((req, res, next) => {
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
-    'https://class-managment-system.vercel.app',
-    /\.vercel\.app$/,  // Allow all Vercel deployments
-    /\.class-managment-system\.vercel\.app$/  // Specific pattern for your app
+    'https://class-managment-system.vercel.app'  // Your Vercel frontend URL
   ];
   
   const origin = req.headers.origin;
-  // Check if origin matches any of the allowed patterns
-  const isAllowedOrigin = allowedOrigins.some(allowedOrigin => {
-    if (typeof allowedOrigin === 'string') {
-      return allowedOrigin === origin;
-    } else if (allowedOrigin instanceof RegExp) {
-      return allowedOrigin.test(origin);
-    }
-    return false;
-  });
-  
   // Allow requests from any origin for file downloads to support mobile devices
   // But restrict other operations to allowed origins
-  if (req.path.includes('/download') || isAllowedOrigin || !origin) {
+  if (req.path.includes('/download') || allowedOrigins.includes(origin) || !origin) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  } else if (isAllowedOrigin) {
+  } else if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   
@@ -926,66 +903,6 @@ app.get("/test-bcrypt", async (req, res) => {
     console.error('❌ Error testing bcrypt:', error);
     res.status(500).json({
       message: 'Error testing bcrypt',
-      error: error.message,
-      status: 'error'
-    });
-  }
-});
-
-// Add an endpoint to test student password change
-app.post("/test-student-password-change", async (req, res) => {
-  try {
-    console.log('=== Test Student Password Change ===');
-    console.log('Request body:', req.body);
-    
-    const { studentId, currentPassword, newPassword } = req.body;
-    
-    // Validate required fields
-    if (!studentId || !currentPassword || !newPassword) {
-      return res.status(400).json({
-        message: 'Student ID, current password, and new password are required',
-        status: 'error'
-      });
-    }
-    
-    // Import Student model
-    const Student = (await import('./Student.js')).default;
-    
-    // Find the student
-    const student = await Student.findById(studentId);
-    console.log('Student found:', !!student);
-    
-    if (!student) {
-      return res.status(404).json({
-        message: 'Student not found',
-        status: 'error'
-      });
-    }
-    
-    // Check if current password is correct
-    const isMatch = await student.comparePassword(currentPassword);
-    console.log('Password comparison result:', isMatch);
-    
-    if (!isMatch) {
-      return res.status(400).json({
-        message: 'Current password is incorrect',
-        status: 'error'
-      });
-    }
-    
-    // Update password
-    student.password = newPassword;
-    await student.save();
-    console.log('Password updated successfully');
-    
-    res.json({
-      message: 'Password changed successfully',
-      status: 'success'
-    });
-  } catch (error) {
-    console.error('Error in test password change:', error);
-    res.status(500).json({
-      message: 'Error changing password',
       error: error.message,
       status: 'error'
     });

@@ -5,9 +5,6 @@ import AdminDashboard from './components/AdminDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import StudentDashboard from './components/StudentDashboardMain';
 import DepartmentHeadDashboard from './components/DepartmentHeadDashboard';
-import StudentExamPage from './components/StudentExamPage';
-import WebsocketDebugger from './components/WebsocketDebugger';
-import PasswordTestPage from './components/PasswordTestPage';
 import { API_BASE_URL } from './api';
 
 function App() {
@@ -122,20 +119,8 @@ function App() {
           element={user && user.type === 'student' ? <StudentDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
         />
         <Route 
-          path="/student/exam/:examId" 
-          element={user && user.type === 'student' ? <StudentExamPage user={user} /> : <Navigate to="/login" />} 
-        />
-        <Route 
           path="/department-head-dashboard/*" 
           element={user && user.type === 'department-head' ? <DepartmentHeadDashboard user={user} token={token} onLogout={handleLogout} /> : <Navigate to="/login" />} 
-        />
-        <Route 
-          path="/websocket-debug" 
-          element={<WebsocketDebugger />} 
-        />
-        <Route 
-          path="/test-password" 
-          element={<PasswordTestPage />} 
         />
         <Route 
           path="/" 
