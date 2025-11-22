@@ -3,7 +3,7 @@ import { FaPlus, FaUserGraduate, FaEnvelope, FaPhone, FaIdCard, FaUniversity, Fa
 import BulkUpload from './BulkUpload';
 import SearchBar from './SearchBar';
 
-const StudentsPage = () => {
+const StudentsPage = ({ user }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -53,10 +53,18 @@ const StudentsPage = () => {
   // Fetch students from API
   const fetchStudents = async (classId = '') => {
     try {
+      setLoading(true);
       // Import the API base URL
       const { API_BASE_URL } = await import('../api');
+      
+      // For department heads, only fetch students from their department
       let url = `${API_BASE_URL}/api/students`;
-      if (classId) {
+      
+      // If user is a department head, filter by their department
+      if (user && user.department && user.department._id) {
+        url += `?department=${user.department._id}`;
+      } else if (classId) {
+        // If classId is provided, filter by class
         url += `?class=${classId}`;
       }
       
@@ -92,7 +100,14 @@ const StudentsPage = () => {
     try {
       // Import the API base URL
       const { API_BASE_URL } = await import('../api');
-      const response = await fetch(`${API_BASE_URL}/api/departments`, {
+      
+      // For department heads, only fetch their own department
+      let url = `${API_BASE_URL}/api/departments`;
+      if (user && user.department && user.department._id) {
+        url += `/${user.department._id}`;
+      }
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -100,7 +115,12 @@ const StudentsPage = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setDepartments(data.data || []);
+        // If fetching a single department, wrap it in an array
+        if (user && user.department && user.department._id) {
+          setDepartments([data.data || data]);
+        } else {
+          setDepartments(data.data || []);
+        }
       }
     } catch (err) {
       console.error('Error fetching departments:', err);
@@ -113,9 +133,13 @@ const StudentsPage = () => {
       setLoading(true);
       // Import the API base URL
       const { API_BASE_URL } = await import('../api');
+      
+      // For department heads, only fetch classes from their department
       let url = `${API_BASE_URL}/api/classes`;
-      if (departmentId) {
-        url += `?department=${departmentId}`;
+      const deptId = departmentId || (user && user.department && user.department._id);
+      
+      if (deptId) {
+        url += `?department=${deptId}`;
       }
       
       const response = await fetch(url, {
@@ -200,161 +224,13 @@ const StudentsPage = () => {
     setIsModalOpen(true);
   };
 
-  // Handle delete student
-  const handleDeleteStudent = async (studentId) => {
-    if (window.confirm('Are you sure you want to delete this student? This action cannot be undone.')) {
-      try {
-        // Import the API base URL
-        const { API_BASE_URL } = await import('../api');
-        const response = await fetch(`${API_BASE_URL}/api/students/${studentId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to delete student');
-        }
-
-        // Refresh the students list
-        await fetchStudents(selectedClass);
-      } catch (err) {
-        setError(err.message);
-      }
-    }
-  };
-
-  // Reset form when modal is closed
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setEditingStudent(null);
-    setModalError(null);
-    setFormData({
-      name: '',
-      userId: '',
-      email: '',
-      password: '',
-      phoneNo: '',
-      department: '',
-      class: ''
-    });
-  };
-
-  // Handle successful bulk upload
-  const handleBulkUploadSuccess = () => {
-    // Refresh the students list after successful upload
-    fetchStudents(selectedClass);
-  };
-  
-  // Handle search
-  const handleSearch = (term) => {
-    setSearchTerm(term);
-  };
-
-  // Add new student
-  const handleAddStudent = async (e) => {
-    e.preventDefault();
-    
-    try {
-      setError(null);
-      setModalError(null);
-      
-      // Log the current form data for debugging
-      console.log('Form data:', formData);
-      console.log('Editing student:', editingStudent);
-      
-      // Validate required fields
-      const requiredFields = editingStudent 
-        ? ['name', 'userId', 'email', 'phoneNo']  // Password not required when editing
-        : ['name', 'userId', 'email', 'password', 'phoneNo'];  // Password required when adding
-      
-      const missingFields = requiredFields.filter(field => !formData[field]);
-      
-      if (missingFields.length > 0) {
-        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-      }
-      
-      // Validate password only when adding a new student or when a new password is provided for editing
-      if ((!editingStudent && formData.password.length < 6) || 
-          (editingStudent && formData.password && formData.password.length < 6)) {
-        throw new Error('Password must be at least 6 characters long');
-      }
-      
-      // Check if class is selected
-      if (!selectedClass) {
-        throw new Error('Please select a class first');
-      }
-      
-      // Prepare the student data according to the backend model
-      const requestBody = {
-        name: formData.name,
-        userId: formData.userId,
-        email: formData.email,
-        phoneNo: formData.phoneNo,
-        department: formData.department || getDepartmentIdFromClass(selectedClass), // Use form data if available, otherwise derive from selected class
-        class: formData.class || selectedClass // Use form data if available, otherwise use selected
-      };
-      
-      // Only include password if it's provided (for both add and edit)
-      if (formData.password) {
-        requestBody.password = formData.password;
-      }
-      
-      // Import the API base URL
-      const { API_BASE_URL } = await import('../api');
-      
-      // Determine URL and method based on whether we're editing or adding
-      const url = editingStudent 
-        ? `${API_BASE_URL}/api/students/${editingStudent._id}`
-        : `${API_BASE_URL}/api/students`;
-      
-      const method = editingStudent ? 'PUT' : 'POST';
-      
-      // Log the request for debugging
-      console.log('Student request:', { url, method, requestBody });
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.log('Student update error response:', errorData);
-        throw new Error(errorData.message || `Failed to ${editingStudent ? 'update' : 'add'} student`);
-      }
-
-      // Refresh the students list
-      await fetchStudents(selectedClass);
-      handleModalClose();
-    } catch (err) {
-      setModalError(err.message);
-      // Keep the modal open to show the error
-      // Don't close the modal on error
-    }
-  };
-
-  // Handle add student button click
-  const handleAddStudentClick = () => {
-    if (!selectedClass) {
-      setError('Please select a class first');
-      return;
-    }
-    setIsModalOpen(true);
-  };
-
-  // Fetch data on component mount
+  // Initialize component
   useEffect(() => {
-    fetchStudents(selectedClass);
+    // Fetch students, departments, and classes
+    fetchStudents();
     fetchDepartments();
     fetchClasses();
-  }, []);
+  }, [user]); // Add user to dependency array to re-fetch when user changes
 
   // Filter students for display
   const displayStudents = searchTerm || selectedClass ? filteredStudents : students;

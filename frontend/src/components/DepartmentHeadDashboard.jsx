@@ -293,7 +293,7 @@ const DepartmentHeadDashboard = ({ user, onLogout }) => {
           {activeTab === 'teachers' ? (
             <TeachersPage />
           ) : activeTab === 'students' ? (
-            <StudentsPage />
+            <StudentsPage user={user} />
           ) : activeTab === 'classes' ? (
             <ClassesPage user={user} /> // Pass user data to ClassesPage
           ) : activeTab === 'courses' ? (
