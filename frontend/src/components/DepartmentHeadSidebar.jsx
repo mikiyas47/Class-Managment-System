@@ -3,9 +3,9 @@ import {
   FaHome, 
   FaUserTie, 
   FaUsers, 
+  FaChalkboard,
   FaBook, 
-  FaCalendarAlt,
-  FaChartBar,
+  FaClock,
   FaCog,
   FaSignOutAlt
 } from 'react-icons/fa';
@@ -30,18 +30,18 @@ const DepartmentHeadSidebar = ({ isOpen, onClose, activeTab, setActiveTab, onLog
     },
     { 
       name: 'Classes', 
-      icon: <FaBook className="w-5 h-5" />, 
+      icon: <FaChalkboard className="w-5 h-5" />, 
       tab: 'classes'
     },
     { 
       name: 'Courses', 
-      icon: <FaCalendarAlt className="w-5 h-5" />, 
+      icon: <FaBook className="w-5 h-5" />, 
       tab: 'courses'
     },
     { 
-      name: 'Reports', 
-      icon: <FaChartBar className="w-5 h-5" />, 
-      tab: 'reports'
+      name: 'Schedules', 
+      icon: <FaClock className="w-5 h-5" />, 
+      tab: 'schedules'
     },
     { 
       name: 'Settings', 
