@@ -410,9 +410,37 @@ const SchedulesPage = ({ user }) => {
             )}
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 w-full items-start sm:items-end">
-            {/* Search Bar */}
-            <div className="flex-grow max-w-md">
+          {/* Controls layout - responsive */}
+          <div className="flex flex-col gap-4 w-full">
+            {/* First row: Class filter and Add Schedule button side by side */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Class filter dropdown */}
+              <div className="w-full sm:w-48">
+                <select
+                  value={classFilter}
+                  onChange={(e) => setClassFilter(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:border-gray-300 dark:text-gray-900"
+                >
+                  <option value="">All Classes</option>
+                  {classes.map((cls) => (
+                    <option key={cls._id} value={cls._id}>
+                      Year {cls.year} - {cls.semester} Semester
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Add Schedule button */}
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors shadow-md hover:shadow-lg whitespace-nowrap"
+              >
+                <FaPlus className="mr-2" /> Add Schedule
+              </button>
+            </div>
+            
+            {/* Second row: Search bar below for mobile, inline for larger screens */}
+            <div className="w-full max-w-md">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -438,29 +466,6 @@ const SchedulesPage = ({ user }) => {
                 )}
               </div>
             </div>
-            
-            {/* Class filter dropdown */}
-            <div className="w-48">
-              <select
-                value={classFilter}
-                onChange={(e) => setClassFilter(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-white dark:border-gray-300 dark:text-gray-900"
-              >
-                <option value="">All Classes</option>
-                {classes.map((cls) => (
-                  <option key={cls._id} value={cls._id}>
-                    Year {cls.year} - {cls.semester} Semester
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center transition-colors shadow-md hover:shadow-lg"
-            >
-              <FaPlus className="mr-2" /> Add Schedule
-            </button>
           </div>
         </div>
       </div>
