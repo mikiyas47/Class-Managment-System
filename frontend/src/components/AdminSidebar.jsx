@@ -19,6 +19,12 @@ const AdminSidebar = ({ activeNav, setActiveNav, onLogout, user }) => {
       subItems: []
     },
     { 
+      id: 'add-admin', 
+      icon: <FaUserPlus />, 
+      label: 'Add Admin',
+      subItems: []
+    },
+    { 
       id: 'add-department', 
       icon: <FaBuilding />, 
       label: 'Departments',

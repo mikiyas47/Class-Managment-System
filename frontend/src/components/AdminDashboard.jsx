@@ -9,13 +9,15 @@ import {
   FaBook,
   FaTasks,
   FaChartLine, 
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaUserPlus
 } from 'react-icons/fa';
 import AdminSidebar from './AdminSidebar';
 import AddDepartmentHead from './AddDepartmentHead';
 import DepartmentsPage from './DepartmentsPage';
 import AddStudentsPage from './AddStudentsPage';
 import SettingsPage from './SettingsPage';
+import AddAdminPage from './AddAdminPage';
 
 const AdminDashboard = ({ user, onLogout }) => {
   const [stats, setStats] = useState({
@@ -255,6 +257,8 @@ const AdminDashboard = ({ user, onLogout }) => {
           <div className="max-w-7xl mx-auto">
             {activeNav === 'dashboard' ? (
               <DashboardContent />
+            ) : activeNav === 'add-admin' ? (
+              <AddAdminPage />
             ) : activeNav === 'add-department-head' ? (
               <AddDepartmentHead setActiveNav={setActiveNav} user={user} />
             ) : activeNav === 'add-department' ? (
