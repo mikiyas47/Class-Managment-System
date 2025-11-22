@@ -56,7 +56,9 @@ const io = new Server(server, {
       "http://localhost:5173", 
       "http://localhost:5174", 
       "http://localhost:5175",
-      "https://class-managment-system.vercel.app"  // Your Vercel frontend URL
+      "https://class-managment-system.vercel.app",
+      /\.vercel\.app$/,  // Allow all Vercel deployments
+      /\.class-managment-system\.vercel\.app$/  // Specific pattern for your app
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true
@@ -214,15 +216,27 @@ app.use((req, res, next) => {
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
-    'https://class-managment-system.vercel.app'  // Your Vercel frontend URL
+    'https://class-managment-system.vercel.app',
+    /\.vercel\.app$/,  // Allow all Vercel deployments
+    /\.class-managment-system\.vercel\.app$/  // Specific pattern for your app
   ];
   
   const origin = req.headers.origin;
+  // Check if origin matches any of the allowed patterns
+  const isAllowedOrigin = allowedOrigins.some(allowedOrigin => {
+    if (typeof allowedOrigin === 'string') {
+      return allowedOrigin === origin;
+    } else if (allowedOrigin instanceof RegExp) {
+      return allowedOrigin.test(origin);
+    }
+    return false;
+  });
+  
   // Allow requests from any origin for file downloads to support mobile devices
   // But restrict other operations to allowed origins
-  if (req.path.includes('/download') || allowedOrigins.includes(origin) || !origin) {
+  if (req.path.includes('/download') || isAllowedOrigin || !origin) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  } else if (allowedOrigins.includes(origin)) {
+  } else if (isAllowedOrigin) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   
