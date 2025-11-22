@@ -1012,19 +1012,36 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
 router.put('/change-password', authenticateToken, async (req, res) => {
   try {
     console.log('=== Student Change Password Request ===');
-    console.log('Request body:', req.body);
-    console.log('User from token:', req.user);
+    console.log('Full request object:', {
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      body: req.body,
+      user: req.user
+    });
     
     const { currentPassword, newPassword } = req.body;
     const studentId = req.user.id; // Get student ID from authenticated token
     
     console.log('Student ID:', studentId);
+    console.log('Current password provided:', !!currentPassword);
+    console.log('New password provided:', !!newPassword);
+    console.log('Current password length:', currentPassword ? currentPassword.length : 'N/A');
+    console.log('New password length:', newPassword ? newPassword.length : 'N/A');
     
     // Validate required fields
-    if (!currentPassword || !newPassword) {
-      console.log('Validation failed: Missing required fields');
+    if (!currentPassword) {
+      console.log('Validation failed: Current password is missing');
       return res.status(400).json({
-        message: 'Current password and new password are required',
+        message: 'Current password is required',
+        status: 'error'
+      });
+    }
+    
+    if (!newPassword) {
+      console.log('Validation failed: New password is missing');
+      return res.status(400).json({
+        message: 'New password is required',
         status: 'error'
       });
     }

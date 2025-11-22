@@ -73,8 +73,10 @@ const SettingsPage = ({ user }) => {
       console.log('API Base URL:', API_BASE_URL);
       console.log('Endpoint:', endpoint);
       console.log('Request body:', {
-        currentPassword,
-        newPassword
+        currentPassword: currentPassword ? '***' : 'EMPTY',
+        newPassword: newPassword ? '***' : 'EMPTY',
+        currentPasswordLength: currentPassword?.length || 0,
+        newPasswordLength: newPassword?.length || 0
       });
       
       const response = await fetch(endpoint, {
