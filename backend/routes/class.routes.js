@@ -24,11 +24,16 @@ router.get('/', authenticateToken, async (req, res) => {
       }
     }
     
+    const { department: departmentId } = req.query;
     let query = {};
     
     // If user is a department head, only show classes from their department
     if (user && user.userType === 'department-head' && user.departmentId) {
-      query = { department: user.departmentId };
+      query.department = user.departmentId;
+    } 
+    // If departmentId is provided in query params, use it (but only if user is not a department head)
+    else if (departmentId) {
+      query.department = departmentId;
     }
     
     const classes = await Class.find(query).populate('department').sort({ createdAt: -1 });

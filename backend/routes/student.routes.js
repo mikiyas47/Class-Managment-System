@@ -13,11 +13,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Get all students (with class filtering)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { class: classId } = req.query;
+    const { class: classId, department: departmentId } = req.query;
     let query = {};
     
     if (classId) {
       query.class = classId;
+    }
+    
+    if (departmentId) {
+      query.department = departmentId;
     }
     
     const students = await Student.find(query)

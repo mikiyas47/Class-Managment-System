@@ -59,13 +59,19 @@ const StudentsPage = ({ user }) => {
       
       // For department heads, only fetch students from their department
       let url = `${API_BASE_URL}/api/students`;
+      const params = new URLSearchParams();
       
       // If user is a department head, filter by their department
       if (user && user.department && user.department._id) {
-        url += `?department=${user.department._id}`;
+        params.append('department', user.department._id);
       } else if (classId) {
         // If classId is provided, filter by class
-        url += `?class=${classId}`;
+        params.append('class', classId);
+      }
+      
+      // Add query parameters to URL if any exist
+      if (params.toString()) {
+        url += `?${params.toString()}`;
       }
       
       const response = await fetch(url, {
@@ -136,10 +142,17 @@ const StudentsPage = ({ user }) => {
       
       // For department heads, only fetch classes from their department
       let url = `${API_BASE_URL}/api/classes`;
+      const params = new URLSearchParams();
+      
       const deptId = departmentId || (user && user.department && user.department._id);
       
       if (deptId) {
-        url += `?department=${deptId}`;
+        params.append('department', deptId);
+      }
+      
+      // Add query parameters to URL if any exist
+      if (params.toString()) {
+        url += `?${params.toString()}`;
       }
       
       const response = await fetch(url, {
