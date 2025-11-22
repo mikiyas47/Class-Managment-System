@@ -1008,21 +1008,7 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
 router.put('/change-password', authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    // Verify the token to get user information
-    let user = null;
-    if (token) {
-      try {
-        user = jwt.verify(token, JWT_SECRET);
-      } catch (err) {
-        console.error('Token verification error:', err);
-        return res.status(401).json({
-          message: 'Invalid token',
-          status: 'error'
-        });
-      }
-    }
+    const studentId = req.user.id; // Get student ID from authenticated token
     
     // Validate required fields
     if (!currentPassword || !newPassword) {
@@ -1041,7 +1027,7 @@ router.put('/change-password', authenticateToken, async (req, res) => {
     }
     
     // Find the student
-    const student = await Student.findById(user.id);
+    const student = await Student.findById(studentId);
     
     if (!student) {
       return res.status(404).json({
@@ -1051,7 +1037,7 @@ router.put('/change-password', authenticateToken, async (req, res) => {
     }
     
     // Check if current password is correct
-    const isMatch = await bcrypt.compare(currentPassword, student.password);
+    const isMatch = await student.comparePassword(currentPassword);
     
     if (!isMatch) {
       return res.status(400).json({
@@ -1060,12 +1046,8 @@ router.put('/change-password', authenticateToken, async (req, res) => {
       });
     }
     
-    // Hash the new password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-    
-    // Update the password
-    student.password = hashedPassword;
+    // Update password
+    student.password = newPassword;
     await student.save();
     
     res.json({
