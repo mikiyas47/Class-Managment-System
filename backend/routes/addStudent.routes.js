@@ -120,11 +120,16 @@ router.post('/', authenticateToken, authorizeRole(['admin', 'department-head']),
       });
     }
     
-    // Validate that assigned class year is lower than original class year
-    if (assignedClass.year >= originalClass.year) {
+    // Validate that assigned class is appropriate for retaking (should be same year or lower)
+    // Compare both year and semester to determine if it's appropriate for retaking
+    const isAppropriateForRetake = 
+      assignedClass.year < originalClass.year || // Lower year
+      (assignedClass.year === originalClass.year && originalClass.semester === 'second' && assignedClass.semester === 'first'); // Same year, but earlier semester
+    
+    if (!isAppropriateForRetake) {
       return res.status(400).json({
         status: 'error',
-        message: 'Assigned class year must be lower than student original class year'
+        message: 'Assigned class must be from a previous academic period (lower year or earlier semester in the same year)'
       });
     }
     
@@ -202,11 +207,16 @@ router.put('/:id', authenticateToken, authorizeRole(['admin', 'department-head']
       const student = await Student.findById(addStudent.student);
       const originalClass = await Class.findById(student.class);
       
-      // Validate that assigned class year is lower than original class year
-      if (assignedClass.year >= originalClass.year) {
+      // Validate that assigned class is appropriate for retaking (should be same year or lower)
+      // Compare both year and semester to determine if it's appropriate for retaking
+      const isAppropriateForRetake = 
+        assignedClass.year < originalClass.year || // Lower year
+        (assignedClass.year === originalClass.year && originalClass.semester === 'second' && assignedClass.semester === 'first'); // Same year, but earlier semester
+      
+      if (!isAppropriateForRetake) {
         return res.status(400).json({
           status: 'error',
-          message: 'Assigned class year must be lower than student original class year'
+          message: 'Assigned class must be from a previous academic period (lower year or earlier semester in the same year)'
         });
       }
       
