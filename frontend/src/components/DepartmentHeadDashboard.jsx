@@ -86,6 +86,12 @@ const DepartmentHeadDashboard = ({ user, onLogout }) => {
         // Import the API base URL
         const { API_BASE_URL } = await import('../api');
         
+        // For department heads, only fetch students from their department
+        let studentsUrl = `${API_BASE_URL}/api/students`;
+        if (user && user.department && user.department._id) {
+          studentsUrl += `?department=${user.department._id}`;
+        }
+        
         const [teachersRes, studentsRes, coursesRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/teachers`, {
             headers: {
@@ -93,7 +99,7 @@ const DepartmentHeadDashboard = ({ user, onLogout }) => {
               'Content-Type': 'application/json'
             }
           }),
-          fetch(`${API_BASE_URL}/api/students`, {
+          fetch(studentsUrl, {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
               'Content-Type': 'application/json'
