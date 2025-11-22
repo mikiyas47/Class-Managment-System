@@ -74,7 +74,7 @@ const AddAdminPage = () => {
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/admins`, {
+      const response = await fetch(`${API_BASE_URL}/api/admin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,6 +86,14 @@ const AddAdminPage = () => {
           password: formData.password
         })
       });
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        throw new Error(`Server returned ${response.status} ${response.statusText}`);
+      }
       
       const data = await response.json();
       
