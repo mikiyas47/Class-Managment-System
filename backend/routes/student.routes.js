@@ -1004,4 +1004,82 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
   }
 });
 
+// Change student password
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    // Verify the token to get user information
+    let user = null;
+    if (token) {
+      try {
+        user = jwt.verify(token, JWT_SECRET);
+      } catch (err) {
+        console.error('Token verification error:', err);
+        return res.status(401).json({
+          message: 'Invalid token',
+          status: 'error'
+        });
+      }
+    }
+    
+    // Validate required fields
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: 'Current password and new password are required',
+        status: 'error'
+      });
+    }
+    
+    // Validate password length
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: 'New password must be at least 6 characters long',
+        status: 'error'
+      });
+    }
+    
+    // Find the student
+    const student = await Student.findById(user.id);
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+    
+    // Check if current password is correct
+    const isMatch = await bcrypt.compare(currentPassword, student.password);
+    
+    if (!isMatch) {
+      return res.status(400).json({
+        message: 'Current password is incorrect',
+        status: 'error'
+      });
+    }
+    
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    
+    // Update the password
+    student.password = hashedPassword;
+    await student.save();
+    
+    res.json({
+      message: 'Password changed successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({
+      message: 'Error changing password',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 export default router;

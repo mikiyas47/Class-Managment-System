@@ -799,24 +799,16 @@ const checkExamAvailability = async () => {
       $expr: { $gt: [{ $add: ["$startTime", { $multiply: ["$duration", 60000] }] }, now] }
     }).populate('course', 'subject');
     
-    // Notify about active exams and send timer updates
+    // Notify about active exams
     for (const exam of activeExams) {
       console.log(`Notifying about active exam: ${exam.title}`);
-      
-      // Calculate time left in seconds
-      const endTime = new Date(exam.startTime.getTime() + exam.duration * 60000);
-      const timeLeft = Math.max(0, Math.floor((endTime - now) / 1000));
-      
-      // Send timer update to all connected clients
-      io.emit('exam-timer-update', {
+      io.emit('exam-active', {
         examId: exam._id,
-        timeLeft: timeLeft
+        title: exam.title,
+        course: exam.course?.subject,
+        startTime: exam.startTime,
+        duration: exam.duration
       });
-      
-      // If time is up, notify that exam has ended
-      if (timeLeft <= 0) {
-        io.emit('exam-ended', exam._id);
-      }
     }
   } catch (error) {
     console.error('Error checking exam availability:', error);
