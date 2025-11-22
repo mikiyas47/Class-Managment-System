@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaUserShield, FaPlus, FaEdit, FaTrash, FaTimes, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaUserShield, FaPlus, FaEdit, FaTrash, FaTimes, FaEye, FaEyeSlash, FaSearch } from 'react-icons/fa';
 
 const AddDepartmentHead = ({ setActiveNav, user }) => {
   const [formData, setFormData] = useState({
@@ -10,6 +10,7 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
     department: ''
   });
   const [departmentHeads, setDepartmentHeads] = useState([]);
+  const [filteredDepartmentHeads, setFilteredDepartmentHeads] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -19,6 +20,21 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
   const [editingDepartmentHead, setEditingDepartmentHead] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filter department heads based on search term
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredDepartmentHeads(departmentHeads);
+    } else {
+      const filtered = departmentHeads.filter(head => 
+        head.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        head.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (head.department && head.department.name && head.department.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredDepartmentHeads(filtered);
+    }
+  }, [searchTerm, departmentHeads]);
 
   // Fetch department heads and departments when component mounts
   useEffect(() => {
@@ -34,6 +50,7 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
       const data = await response.json();
       if (data.status === 'success') {
         setDepartmentHeads(data.data);
+        setFilteredDepartmentHeads(data.data);
       } else {
         setError('Failed to fetch department heads');
       }
@@ -198,117 +215,101 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
       password: '',
       department: ''
     });
-    setShowPassword(false);
-    setShowNewPassword(false);
-  };
-
-  // Filter departments to only show those without a head (except for the current editing department head)
-  const getAvailableDepartments = () => {
-    if (editingDepartmentHead) {
-      // When editing, include the current department of the head being edited
-      // and exclude departments assigned to other department heads
-      const currentDepartmentId = editingDepartmentHead.department._id || editingDepartmentHead.department;
-      return departments.filter(dept => 
-        dept._id === currentDepartmentId || 
-        !departmentHeads.some(head => 
-          (head.department._id === dept._id || head.department === dept._id) && 
-          head._id !== editingDepartmentHead._id
-        )
-      );
-    }
-    
-    // When creating, only show departments without a head
-    return departments.filter(dept => 
-      !departmentHeads.some(head => 
-        head.department._id === dept._id || head.department === dept._id
-      )
-    );
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-800 flex items-center">
-          <FaUserShield className="mr-2" /> Department Heads
-        </h1>
+    <div className="p-4 md:p-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center">
+            <FaUserShield className="mr-2 text-blue-600" /> Department Heads
+          </h1>
+          <p className="text-gray-600 mt-1">Manage department heads and their assigned departments</p>
+        </div>
         <button 
-          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 text-sm rounded-md flex items-center justify-center transition-colors mt-2 md:mt-0"
+          className="mt-4 md:mt-0 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           onClick={openModal}
         >
-          <FaPlus className="mr-1.5" size={14} /> Add Department Head
+          <FaPlus className="mr-2" /> Add Department Head
         </button>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FaSearch className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Search department heads by name, email, or department..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
       {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded" role="alert">
-          <p className="font-bold">Error</p>
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6">
           <p>{error}</p>
-          <button 
-            onClick={() => setError(null)}
-            className="mt-2 text-red-800 hover:text-red-900 font-medium"
-          >
-            Dismiss
-          </button>
         </div>
       )}
-      
+
       {success && (
-        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded" role="alert">
-          <p className="font-bold">Success</p>
-          <p>Department head {editingDepartmentHead ? 'updated' : 'created'} successfully!</p>
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded mb-6">
+          <p>Operation completed successfully!</p>
         </div>
       )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Name
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
-                  Phone Number
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Phone
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-900 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Department
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-900 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {departmentHeads.length > 0 ? (
-                departmentHeads.map((head) => (
+              {filteredDepartmentHeads.length > 0 ? (
+                filteredDepartmentHeads.map((head) => (
                   <tr key={head._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {head.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {head.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {head.phoneNo}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {head.department?.name || 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
-                        className="text-blue-600 hover:text-blue-900 mr-3"
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
                         onClick={() => handleEdit(head)}
-                        title="Edit"
+                        className="text-indigo-600 hover:text-indigo-900 mr-3"
                       >
                         <FaEdit />
                       </button>
-                      <button 
-                        className="text-red-600 hover:text-red-900"
+                      <button
                         onClick={() => handleDelete(head._id)}
-                        title="Delete"
+                        className="text-red-600 hover:text-red-900"
                       >
                         <FaTrash />
                       </button>
@@ -317,8 +318,8 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-900">
-                    No department heads found. Click "Add Department Head" to create one.
+                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                    {searchTerm ? 'No department heads found matching your search' : 'No department heads found'}
                   </td>
                 </tr>
               )}
@@ -327,33 +328,39 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
         </div>
       </div>
 
-      {/* Modal for adding/editing department heads */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">
                 {editingDepartmentHead ? 'Edit Department Head' : 'Add New Department Head'}
-              </h2>
-              <button 
-                className="text-gray-500 hover:text-gray-700"
+              </h3>
+              <button
                 onClick={closeModal}
+                className="text-gray-400 hover:text-gray-500"
               >
                 <FaTimes />
               </button>
             </div>
-            {modalError && (
-              <div className="mx-6 mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded" role="alert">
-                <p className="font-bold">Error</p>
-                <p>{modalError}</p>
-              </div>
-            )}
             
-            <form onSubmit={handleSubmit} className="px-6 py-4">
-              <div className="space-y-4">
+            <div className="p-6">
+              {modalError && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
+                  <p>{modalError}</p>
+                </div>
+              )}
+              
+              {success && (
+                <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded">
+                  <p>Department head {editingDepartmentHead ? 'updated' : 'created'} successfully!</p>
+                </div>
+              )}
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name *
+                    Full Name
                   </label>
                   <input
                     type="text"
@@ -361,15 +368,15 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter full name"
+                    required
                   />
                 </div>
-
+                
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address *
+                    Email Address
                   </label>
                   <input
                     type="email"
@@ -377,93 +384,138 @@ const AddDepartmentHead = ({ setActiveNav, user }) => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter email address"
+                    required
                   />
                 </div>
-
+                
                 <div>
                   <label htmlFor="phoneNo" className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number *
+                    Phone Number
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     id="phoneNo"
                     name="phoneNo"
                     value={formData.phoneNo}
                     onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter phone number"
+                    required
                   />
                 </div>
-
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                    {editingDepartmentHead ? 'New Password' : 'Password'} {editingDepartmentHead ? '' : '*'}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={editingDepartmentHead ? (showNewPassword ? "text" : "password") : (showPassword ? "text" : "password")}
-                      id="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required={!editingDepartmentHead}
-                      minLength="6"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 pr-10"
-                      placeholder={editingDepartmentHead ? "Enter new password (leave blank to keep current)" : "Enter password (min 6 characters)"}
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                      onClick={() => editingDepartmentHead ? setShowNewPassword(!showNewPassword) : setShowPassword(!showPassword)}
-                    >
-                      {editingDepartmentHead ? (showNewPassword ? <FaEyeSlash /> : <FaEye />) : (showPassword ? <FaEyeSlash /> : <FaEye />)}
-                    </button>
+                
+                {!editingDepartmentHead && (
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                        placeholder="Enter password"
+                        required
+                        minLength="6"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <FaEyeSlash className="text-gray-400" /> : <FaEye className="text-gray-400" />}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Password must be at least 6 characters</p>
                   </div>
-                </div>
-
+                )}
+                
+                {editingDepartmentHead && (
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                      New Password (optional)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? "text" : "password"}
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                        placeholder="Enter new password (optional)"
+                        minLength="6"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <FaEyeSlash className="text-gray-400" /> : <FaEye className="text-gray-400" />}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Leave blank to keep current password</p>
+                  </div>
+                )}
+                
                 <div>
                   <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
-                    Department *
+                    Department
                   </label>
                   <select
                     id="department"
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select a department</option>
-                    {getAvailableDepartments().map((dept) => (
+                    {departments.map((dept) => (
                       <option key={dept._id} value={dept._id}>
                         {dept.name}
                       </option>
                     ))}
                   </select>
                 </div>
-              </div>
-
-              <div className="mt-6 flex justify-end space-x-3">
-                <button 
-                  type="button" 
-                  onClick={closeModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  {loading ? 'Saving...' : (editingDepartmentHead ? 'Update Department Head' : 'Create Department Head')}
-                </button>
-              </div>
-            </form>
+                
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <FaTimes className="mr-2 inline" />
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
+                  >
+                    {loading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {editingDepartmentHead ? 'Updating...' : 'Creating...'}
+                      </>
+                    ) : (
+                      <>
+                        <FaUserShield className="mr-2" />
+                        {editingDepartmentHead ? 'Update Head' : 'Add Head'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { FaUserPlus, FaSave, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaUserPlus, FaSave, FaTimes, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
 
 const AddAdminPage = () => {
   const [admins, setAdmins] = useState([]);
+  const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -15,6 +17,19 @@ const AddAdminPage = () => {
     password: '',
     confirmPassword: ''
   });
+
+  // Filter admins based on search term
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredAdmins(admins);
+    } else {
+      const filtered = admins.filter(admin => 
+        admin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        admin.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredAdmins(filtered);
+    }
+  }, [searchTerm, admins]);
 
   // Fetch admins when component mounts
   useEffect(() => {
@@ -58,6 +73,7 @@ const AddAdminPage = () => {
       
       if (data.status === 'success') {
         setAdmins(data.data || []);
+        setFilteredAdmins(data.data || []);
       } else {
         setError(data.message || 'Failed to fetch admins');
       }
@@ -294,6 +310,22 @@ const AddAdminPage = () => {
         </button>
       </div>
       
+      {/* Search Bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FaSearch className="text-gray-400" />
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Search admins by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+      
       {error && !showModal && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
           <p>{error}</p>
@@ -330,8 +362,8 @@ const AddAdminPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {admins.length > 0 ? (
-                admins.map((admin) => (
+              {filteredAdmins.length > 0 ? (
+                filteredAdmins.map((admin) => (
                   <tr key={admin._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {admin.name}
@@ -361,7 +393,7 @@ const AddAdminPage = () => {
               ) : (
                 <tr>
                   <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No admins found
+                    {searchTerm ? 'No admins found matching your search' : 'No admins found'}
                   </td>
                 </tr>
               )}
