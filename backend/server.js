@@ -932,6 +932,66 @@ app.get("/test-bcrypt", async (req, res) => {
   }
 });
 
+// Add an endpoint to test student password change
+app.post("/test-student-password-change", async (req, res) => {
+  try {
+    console.log('=== Test Student Password Change ===');
+    console.log('Request body:', req.body);
+    
+    const { studentId, currentPassword, newPassword } = req.body;
+    
+    // Validate required fields
+    if (!studentId || !currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: 'Student ID, current password, and new password are required',
+        status: 'error'
+      });
+    }
+    
+    // Import Student model
+    const Student = (await import('./Student.js')).default;
+    
+    // Find the student
+    const student = await Student.findById(studentId);
+    console.log('Student found:', !!student);
+    
+    if (!student) {
+      return res.status(404).json({
+        message: 'Student not found',
+        status: 'error'
+      });
+    }
+    
+    // Check if current password is correct
+    const isMatch = await student.comparePassword(currentPassword);
+    console.log('Password comparison result:', isMatch);
+    
+    if (!isMatch) {
+      return res.status(400).json({
+        message: 'Current password is incorrect',
+        status: 'error'
+      });
+    }
+    
+    // Update password
+    student.password = newPassword;
+    await student.save();
+    console.log('Password updated successfully');
+    
+    res.json({
+      message: 'Password changed successfully',
+      status: 'success'
+    });
+  } catch (error) {
+    console.error('Error in test password change:', error);
+    res.status(500).json({
+      message: 'Error changing password',
+      error: error.message,
+      status: 'error'
+    });
+  }
+});
+
 // Add an enhanced endpoint to test admin password with detailed information
 app.get("/test-admin-password-detailed", async (req, res) => {
   try {
