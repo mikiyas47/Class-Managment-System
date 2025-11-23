@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StudentSidebar from './StudentSidebar';
 import ExamRow from './ExamRow';
+import StudentScheduleView from './StudentScheduleView';
+import SettingsPage from './SettingsPage';
 import { FaBook, FaTasks, FaClipboardList, FaChartBar, FaBell, FaSignOutAlt } from 'react-icons/fa';
 
 const StudentDashboard = ({ user, onLogout }) => {
@@ -332,12 +334,7 @@ const StudentDashboard = ({ user, onLogout }) => {
         );
       case 'schedule':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">My Schedule</h2>
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <p className="text-gray-500 text-center">Schedule information will be displayed here</p>
-            </div>
-          </div>
+          <StudentScheduleView studentId={user._id} token={localStorage.getItem('token')} />
         );
       case 'exams':
         return (
@@ -483,12 +480,7 @@ const StudentDashboard = ({ user, onLogout }) => {
         );
       case 'settings':
         return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Settings</h2>
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <p className="text-gray-500">Settings page content will go here</p>
-            </div>
-          </div>
+          <SettingsPage user={user} />
         );
       default:
         return (
