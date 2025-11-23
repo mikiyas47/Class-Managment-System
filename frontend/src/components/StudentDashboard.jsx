@@ -103,8 +103,10 @@ const StudentDashboard = ({ user, onLogout }) => {
 
         if (announcementsContentType && announcementsContentType.includes('application/json')) {
           const announcementsData = await announcementsRes.json();
+          console.log('Announcements data received:', announcementsData);
           if (announcementsData.status === 'success') {
             setAnnouncements(announcementsData.data);
+            console.log('Announcements set in state:', announcementsData.data);
           }
         }
 
@@ -315,13 +317,16 @@ const StudentDashboard = ({ user, onLogout }) => {
             {/* Recent Activity */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Recent Activity</h3>
+              <div className="mb-4 p-2 bg-blue-50 rounded">
+                <p className="text-blue-800 text-sm">Dashboard announcements count: {announcements.length}</p>
+              </div>
               <div className="space-y-4">
                 {announcements.slice(0, 3).map(announcement => (
                   <div key={announcement._id} className="border-b border-gray-200 pb-4 last:border-b-0">
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-medium text-gray-900">{announcement.title}</h4>
-                        <p className="text-gray-600 text-sm mt-1">{announcement.content}</p>
+                        <p className="text-gray-600 text-sm mt-1 whitespace-pre-wrap">{announcement.message}</p>
                       </div>
                       <span className="text-xs text-gray-500 whitespace-nowrap">
                         {formatDate(announcement.createdAt)}
@@ -500,13 +505,22 @@ const StudentDashboard = ({ user, onLogout }) => {
         return (
           <div className="p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Announcements</h2>
+            <div className="mb-4 p-4 bg-blue-100 rounded-lg">
+              <p className="text-blue-800">Total announcements: {announcements.length}</p>
+              {announcements.length > 0 && (
+                <div>
+                  <p className="text-blue-800">First announcement title: {announcements[0]?.title}</p>
+                  <p className="text-blue-800">First announcement message: {announcements[0]?.message}</p>
+                </div>
+              )}
+            </div>
             <div className="space-y-4">
               {announcements.map(announcement => (
                 <div key={announcement._id} className="bg-white rounded-lg shadow-md p-6">
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{announcement.title}</h3>
-                      <p className="text-gray-600 mt-2 whitespace-pre-wrap">{announcement.content}</p>
+                      <p className="text-gray-600 mt-2 whitespace-pre-wrap">{announcement.message}</p>
                     </div>
                     <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
                       {formatDate(announcement.createdAt)}
