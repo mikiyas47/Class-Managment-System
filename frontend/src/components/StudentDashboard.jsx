@@ -341,33 +341,35 @@ const StudentDashboard = ({ user, onLogout }) => {
           <div className="p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">My Courses</h2>
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {courses.map(course => (
-                    <tr key={course._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.subject}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.code}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.crh}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.teacher?.name}</td>
-                    </tr>
-                  ))}
-                  {courses.length === 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
-                        No courses found
-                      </td>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {courses.map(course => (
+                      <tr key={course._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.subject}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.code}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.crh}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.teacher?.name}</td>
+                      </tr>
+                    ))}
+                    {courses.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                          No courses found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );
@@ -380,35 +382,37 @@ const StudentDashboard = ({ user, onLogout }) => {
           <div className="p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Upcoming Exams</h2>
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {exams.map(exam => (
-                    <ExamRow 
-                      key={exam._id} 
-                      exam={exam} 
-                      examEndTime={new Date(new Date(exam.startTime).getTime() + exam.duration * 60000)} 
-                      navigate={navigate} 
-                    />
-                  ))}
-                  {exams.length === 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                        No upcoming exams
-                      </td>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {exams.map(exam => (
+                      <ExamRow 
+                        key={exam._id} 
+                        exam={exam} 
+                        examEndTime={new Date(new Date(exam.startTime).getTime() + exam.duration * 60000)} 
+                        navigate={navigate} 
+                      />
+                    ))}
+                    {exams.length === 0 && (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                          No upcoming exams
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );
@@ -417,39 +421,41 @@ const StudentDashboard = ({ user, onLogout }) => {
           <div className="p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Assignments</h2>
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {assignments.map(assignment => (
-                    <tr key={assignment._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assignment.course?.subject}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <button
-                          onClick={() => handleDownloadAssignment(assignment._id, assignment.filename)}
-                          className="flex items-center text-green-600 hover:text-green-800"
-                        >
-                          <span className="mr-2">{assignment.filename}</span>
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {assignments.length === 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <td colSpan="2" className="px-6 py-4 text-center text-gray-500">
-                        No assignments found
-                      </td>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {assignments.map(assignment => (
+                      <tr key={assignment._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assignment.course?.subject}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <button
+                            onClick={() => handleDownloadAssignment(assignment._id, assignment.filename)}
+                            className="flex items-center text-green-600 hover:text-green-800"
+                          >
+                            <span className="mr-2">{assignment.filename}</span>
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {assignments.length === 0 && (
+                      <tr>
+                        <td colSpan="2" className="px-6 py-4 text-center text-gray-500">
+                          No assignments found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );
@@ -458,33 +464,35 @@ const StudentDashboard = ({ user, onLogout }) => {
           <div className="p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">My Results</h2>
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {results.map(result => (
-                    <tr key={result._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.exam?.course?.subject}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.exam?.title}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.score}%</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(result.submittedAt)}</td>
-                    </tr>
-                  ))}
-                  {results.length === 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
-                        No results available
-                      </td>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {results.map(result => (
+                      <tr key={result._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.exam?.course?.subject}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.exam?.title}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{result.score}%</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(result.submittedAt)}</td>
+                      </tr>
+                    ))}
+                    {results.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                          No results available
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );
@@ -498,9 +506,9 @@ const StudentDashboard = ({ user, onLogout }) => {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">{announcement.title}</h3>
-                      <p className="text-gray-600 mt-2">{announcement.content}</p>
+                      <p className="text-gray-600 mt-2 whitespace-pre-wrap">{announcement.content}</p>
                     </div>
-                    <span className="text-sm text-gray-500 whitespace-nowrap">
+                    <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
                       {formatDate(announcement.createdAt)}
                     </span>
                   </div>
