@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FaKey, FaSave } from 'react-icons/fa';
+import { API_BASE_URL } from '../api';
 
 const SettingsPage = ({ user }) => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -46,9 +47,6 @@ const SettingsPage = ({ user }) => {
     
     try {
       const token = localStorage.getItem('token');
-      
-      // Import the API base URL
-      const { API_BASE_URL } = await import('../api');
       
       // Determine the correct endpoint based on user type
       let endpoint = `${API_BASE_URL}/api/admin/change-password`;
