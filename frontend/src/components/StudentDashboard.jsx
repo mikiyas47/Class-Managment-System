@@ -317,20 +317,21 @@ const StudentDashboard = ({ user, onLogout }) => {
             {/* Recent Activity */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Recent Activity</h3>
-              <div className="mb-4 p-2 bg-blue-50 rounded">
-                <p className="text-blue-800 text-sm">Dashboard announcements count: {announcements.length}</p>
-              </div>
               <div className="space-y-4">
                 {announcements.slice(0, 3).map(announcement => (
                   <div key={announcement._id} className="border-b border-gray-200 pb-4 last:border-b-0">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{announcement.title}</h4>
-                        <p className="text-gray-600 text-sm mt-1 whitespace-pre-wrap">{announcement.message}</p>
-                      </div>
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="font-medium text-gray-900">{announcement.title}</h4>
                       <span className="text-xs text-gray-500 whitespace-nowrap">
                         {formatDate(announcement.createdAt)}
                       </span>
+                    </div>
+                    <p className="text-gray-600 text-sm mt-1 whitespace-pre-wrap mb-2">{announcement.message}</p>
+                    <div className="flex items-center text-xs text-gray-500">
+                      <svg className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span>By {announcement.teacher?.name || 'Unknown Teacher'}</span>
                     </div>
                   </div>
                 ))}
@@ -505,26 +506,21 @@ const StudentDashboard = ({ user, onLogout }) => {
         return (
           <div className="p-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Announcements</h2>
-            <div className="mb-4 p-4 bg-blue-100 rounded-lg">
-              <p className="text-blue-800">Total announcements: {announcements.length}</p>
-              {announcements.length > 0 && (
-                <div>
-                  <p className="text-blue-800">First announcement title: {announcements[0]?.title}</p>
-                  <p className="text-blue-800">First announcement message: {announcements[0]?.message}</p>
-                </div>
-              )}
-            </div>
             <div className="space-y-4">
               {announcements.map(announcement => (
-                <div key={announcement._id} className="bg-white rounded-lg shadow-md p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{announcement.title}</h3>
-                      <p className="text-gray-600 mt-2 whitespace-pre-wrap">{announcement.message}</p>
-                    </div>
+                <div key={announcement._id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">{announcement.title}</h3>
                     <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
                       {formatDate(announcement.createdAt)}
                     </span>
+                  </div>
+                  <p className="text-gray-600 mt-2 whitespace-pre-wrap mb-3">{announcement.message}</p>
+                  <div className="flex items-center text-sm text-gray-500">
+                    <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>By {announcement.teacher?.name || 'Unknown Teacher'}</span>
                   </div>
                 </div>
               ))}
