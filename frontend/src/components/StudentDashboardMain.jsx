@@ -64,7 +64,7 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       
       // Fetch student's courses
       console.log('Fetching courses...');
-      const coursesResponse = await fetch(`/api/students/${user._id}/courses`, {
+      const coursesResponse = await fetch(`${API_BASE_URL}/api/students/${user._id}/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -73,10 +73,18 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       console.log('Courses response status:', coursesResponse.status);
       
       if (coursesResponse.ok) {
-        const coursesData = await coursesResponse.json();
-        console.log('Courses data:', coursesData);
-        setCourses(coursesData.data || []);
-        console.log('Number of courses:', (coursesData.data || []).length);
+        // Check content type before parsing JSON
+        const contentType = coursesResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const coursesData = await coursesResponse.json();
+          console.log('Courses data:', coursesData);
+          setCourses(coursesData.data || []);
+          console.log('Number of courses:', (coursesData.data || []).length);
+        } else {
+          console.error('Courses response is not JSON:', contentType);
+          const errorText = await coursesResponse.text();
+          console.error('Courses error response:', errorText);
+        }
       } else {
         console.error('Failed to fetch courses:', coursesResponse.status);
         const errorText = await coursesResponse.text();
@@ -114,10 +122,19 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       }
       
       if (examsResponse.ok) {
-        const examsData = await examsResponse.json();
-        console.log('Exams data received:', examsData);
-        setExams(examsData.data || []);
-        console.log('Exams set in state:', examsData.data || []);
+        // Check content type before parsing JSON
+        const contentType = examsResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const examsData = await examsResponse.json();
+          console.log('Exams data received:', examsData);
+          setExams(examsData.data || []);
+          console.log('Exams set in state:', examsData.data || []);
+        } else {
+          console.error('Exams response is not JSON:', contentType);
+          const errorText = await examsResponse.text();
+          console.error('Exams error response:', errorText);
+          setError(`Failed to fetch exams: Server returned HTML instead of JSON`);
+        }
       } else {
         const errorText = await examsResponse.text();
         console.error('Exams fetch failed with status:', examsResponse.status);
@@ -136,9 +153,17 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       console.log('Announcements response status:', announcementsResponse.status);
       
       if (announcementsResponse.ok) {
-        const announcementsData = await announcementsResponse.json();
-        console.log('Announcements data:', announcementsData);
-        setAnnouncements(announcementsData.data || []);
+        // Check content type before parsing JSON
+        const contentType = announcementsResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const announcementsData = await announcementsResponse.json();
+          console.log('Announcements data:', announcementsData);
+          setAnnouncements(announcementsData.data || []);
+        } else {
+          console.error('Announcements response is not JSON:', contentType);
+          const errorText = await announcementsResponse.text();
+          console.error('Announcements error response:', errorText);
+        }
       }
     } catch (err) {
       console.error('Error in fetchData:', err);

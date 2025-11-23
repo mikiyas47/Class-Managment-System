@@ -1,4 +1,0 @@
-name,email,phoneNumber,userId,password
-Jane Smith,jane@example.com,9876543210,T004,password123
-Bob Johnson,bob@example.com,5551234567,T005,securepass
-Alice Williams,alice@example.com,4449876543,T006,mypassword
