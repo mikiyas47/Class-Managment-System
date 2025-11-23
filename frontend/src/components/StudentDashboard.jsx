@@ -85,8 +85,10 @@ const StudentDashboard = ({ user, onLogout }) => {
 
         if (assignmentsContentType && assignmentsContentType.includes('application/json')) {
           const assignmentsData = await assignmentsRes.json();
+          console.log('Assignments data received:', assignmentsData);
           if (assignmentsData.status === 'success') {
             setAssignments(assignmentsData.data);
+            console.log('Assignments set in state:', assignmentsData.data);
           }
         }
 
@@ -174,24 +176,43 @@ const StudentDashboard = ({ user, onLogout }) => {
       // Log the request for debugging
       console.log('Download request:', { assignmentId, filename, API_BASE_URL });
       
-      const response = await fetch(`${API_BASE_URL}/api/assignments/${assignmentId}/download`, {
+      // Validate inputs
+      if (!assignmentId) {
+        throw new Error('Assignment ID is missing');
+      }
+      
+      if (!token) {
+        throw new Error('Authentication token is missing');
+      }
+      
+      const downloadUrl = `${API_BASE_URL}/api/assignments/${assignmentId}/download`;
+      console.log('Full download URL:', downloadUrl);
+      
+      const response = await fetch(downloadUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      console.log('Download response:', { status: response.status, statusText: response.statusText });
+      console.log('Download response:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        headers: [...response.headers.entries()]
+      });
       
       if (!response.ok) {
         // Try to parse error response
-        let errorMessage = 'Failed to download file';
+        let errorMessage = `Failed to download file (HTTP ${response.status}: ${response.statusText})`;
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
-          // If we can't parse JSON, use status text
-          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          // If we can't parse JSON, check if it's HTML (which would indicate a server error)
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('text/html')) {
+            errorMessage = `Server error (HTTP ${response.status}: ${response.statusText}). The file may not exist or there was a server issue.`;
+          }
         }
         throw new Error(errorMessage);
       }
@@ -399,18 +420,14 @@ const StudentDashboard = ({ user, onLogout }) => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assignment</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {assignments.map(assignment => (
                     <tr key={assignment._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{assignment.title}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assignment.course?.subject}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(assignment.dueDate)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <button
                           onClick={() => handleDownloadAssignment(assignment._id, assignment.filename)}
@@ -426,7 +443,7 @@ const StudentDashboard = ({ user, onLogout }) => {
                   ))}
                   {assignments.length === 0 && (
                     <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                      <td colSpan="2" className="px-6 py-4 text-center text-gray-500">
                         No assignments found
                       </td>
                     </tr>
