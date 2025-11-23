@@ -47,14 +47,8 @@ const SettingsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
-      // Use the deployed backend URL directly for production
-      const isProduction = window.location.hostname !== 'localhost' && 
-                        window.location.hostname !== '127.0.0.1' &&
-                        !window.location.hostname.startsWith('192.168.');
-      
-      const API_BASE_URL = isProduction 
-        ? 'https://class-managment-system.onrender.com' 
-        : 'http://localhost:5000';
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
       
       // Determine the correct endpoint based on user type
       let endpoint = `${API_BASE_URL}/api/admin/change-password`;
