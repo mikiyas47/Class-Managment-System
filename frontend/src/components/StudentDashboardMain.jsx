@@ -1,82 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaBook, FaClipboardList, FaBell, FaUser, FaSignOutAlt } from 'react-icons/fa';
-
-// ExamRow component
-const ExamRow = ({ exam, examEndTime, navigate }) => {
-  const [timeRemaining, setTimeRemaining] = useState(() => {
-    const now = new Date();
-    return Math.max(0, Math.floor((examEndTime - now) / 1000));
-  });
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      const remaining = Math.max(0, Math.floor((examEndTime - now) / 1000));
-      setTimeRemaining(remaining);
-      
-      // If time is up, we might want to refresh the exams list
-      if (remaining === 0) {
-        clearInterval(timer);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [examEndTime]);
-
-  // Format time remaining as MM:SS
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Format date in Nairobi timezone
-  const formatNairobiDate = (dateString) => {
-    const date = new Date(dateString);
-    const options = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      timeZone: 'Africa/Nairobi'
-    };
-    return date.toLocaleDateString('en-US', options);
-  };
-
-  // Format time in Nairobi timezone
-  const formatNairobiTime = (dateString) => {
-    const date = new Date(dateString);
-    const options = { 
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Africa/Nairobi'
-    };
-    return date.toLocaleTimeString('en-US', options);
-  };
-
-  return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{exam.title}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{exam.course?.subject}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatNairobiDate(exam.startTime)}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatNairobiTime(exam.startTime)}</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{exam.duration} minutes</td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-          {formatTime(timeRemaining)}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        <button
-          onClick={() => navigate(`/student/exam/${exam._id}`)}
-          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-        >
-          Start Exam
-        </button>
-      </td>
-    </tr>
-  );
-};
+import ExamRow from './ExamRow';
 
 console.log('Environment variables:');
 console.log('  NODE_ENV:', process.env.NODE_ENV);
@@ -139,7 +64,7 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       
       // Fetch student's courses
       console.log('Fetching courses...');
-      const coursesResponse = await fetch(`${API_BASE_URL}/api/students/${user._id}/courses`, {
+      const coursesResponse = await fetch(`/api/students/${user._id}/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -148,18 +73,10 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       console.log('Courses response status:', coursesResponse.status);
       
       if (coursesResponse.ok) {
-        // Check content type before parsing JSON
-        const contentType = coursesResponse.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const coursesData = await coursesResponse.json();
-          console.log('Courses data:', coursesData);
-          setCourses(coursesData.data || []);
-          console.log('Number of courses:', (coursesData.data || []).length);
-        } else {
-          console.error('Courses response is not JSON:', contentType);
-          const errorText = await coursesResponse.text();
-          console.error('Courses error response:', errorText);
-        }
+        const coursesData = await coursesResponse.json();
+        console.log('Courses data:', coursesData);
+        setCourses(coursesData.data || []);
+        console.log('Number of courses:', (coursesData.data || []).length);
       } else {
         console.error('Failed to fetch courses:', coursesResponse.status);
         const errorText = await coursesResponse.text();
@@ -197,19 +114,10 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       }
       
       if (examsResponse.ok) {
-        // Check content type before parsing JSON
-        const contentType = examsResponse.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const examsData = await examsResponse.json();
-          console.log('Exams data received:', examsData);
-          setExams(examsData.data || []);
-          console.log('Exams set in state:', examsData.data || []);
-        } else {
-          console.error('Exams response is not JSON:', contentType);
-          const errorText = await examsResponse.text();
-          console.error('Exams error response:', errorText);
-          setError(`Failed to fetch exams: Server returned HTML instead of JSON`);
-        }
+        const examsData = await examsResponse.json();
+        console.log('Exams data received:', examsData);
+        setExams(examsData.data || []);
+        console.log('Exams set in state:', examsData.data || []);
       } else {
         const errorText = await examsResponse.text();
         console.error('Exams fetch failed with status:', examsResponse.status);
@@ -228,17 +136,9 @@ const StudentDashboard = ({ user, token, onLogout }) => {
       console.log('Announcements response status:', announcementsResponse.status);
       
       if (announcementsResponse.ok) {
-        // Check content type before parsing JSON
-        const contentType = announcementsResponse.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const announcementsData = await announcementsResponse.json();
-          console.log('Announcements data:', announcementsData);
-          setAnnouncements(announcementsData.data || []);
-        } else {
-          console.error('Announcements response is not JSON:', contentType);
-          const errorText = await announcementsResponse.text();
-          console.error('Announcements error response:', errorText);
-        }
+        const announcementsData = await announcementsResponse.json();
+        console.log('Announcements data:', announcementsData);
+        setAnnouncements(announcementsData.data || []);
       }
     } catch (err) {
       console.error('Error in fetchData:', err);
