@@ -171,20 +171,38 @@ const StudentDashboard = ({ user, onLogout }) => {
       // Import the API base URL
       const { API_BASE_URL } = await import('../api');
       
+      // Log the request for debugging
+      console.log('Download request:', { assignmentId, filename, API_BASE_URL });
+      
       const response = await fetch(`${API_BASE_URL}/api/assignments/${assignmentId}/download`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
+      console.log('Download response:', { status: response.status, statusText: response.statusText });
+      
       if (!response.ok) {
-        // Check content type before parsing JSON
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        // Try to parse error response
+        let errorMessage = 'Failed to download file';
+        try {
           const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to download file');
-        } else {
-          throw new Error('Failed to download file');
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // If we can't parse JSON, use status text
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Get the filename from the Content-Disposition header if available
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let downloadFilename = filename;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch && filenameMatch[1]) {
+          downloadFilename = filenameMatch[1];
         }
       }
       
@@ -192,7 +210,7 @@ const StudentDashboard = ({ user, onLogout }) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = downloadFilename;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -385,7 +403,6 @@ const StudentDashboard = ({ user, onLogout }) => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -394,20 +411,22 @@ const StudentDashboard = ({ user, onLogout }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{assignment.title}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assignment.course?.subject}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(assignment.dueDate)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{assignment.filename}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <button
                           onClick={() => handleDownloadAssignment(assignment._id, assignment.filename)}
-                          className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
+                          className="flex items-center text-green-600 hover:text-green-800"
                         >
-                          Download
+                          <span className="mr-2">{assignment.filename}</span>
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
                         </button>
                       </td>
                     </tr>
                   ))}
                   {assignments.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
                         No assignments found
                       </td>
                     </tr>
