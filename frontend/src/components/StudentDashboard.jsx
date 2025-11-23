@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StudentSidebar from './StudentSidebar';
+import ExamRow from './ExamRow';
 import { FaBook, FaTasks, FaClipboardList, FaChartBar, FaBell, FaSignOutAlt } from 'react-icons/fa';
 
 const StudentDashboard = ({ user, onLogout }) => {
@@ -330,21 +331,12 @@ const StudentDashboard = ({ user, onLogout }) => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {exams.map(exam => (
-                    <tr key={exam._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{exam.title}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{exam.course?.subject}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(exam.startTime)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatTime(exam.startTime)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{exam.duration} minutes</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <button
-                          onClick={() => navigate(`/student/exam/${exam._id}`)}
-                          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
-                        >
-                          Start Exam
-                        </button>
-                      </td>
-                    </tr>
+                    <ExamRow 
+                      key={exam._id} 
+                      exam={exam} 
+                      examEndTime={new Date(new Date(exam.startTime).getTime() + exam.duration * 60000)} 
+                      navigate={navigate} 
+                    />
                   ))}
                   {exams.length === 0 && (
                     <tr>
