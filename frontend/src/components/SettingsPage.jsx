@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { FaKey, FaSave } from 'react-icons/fa';
-import { API_BASE_URL } from '../api';
 
 const SettingsPage = ({ user }) => {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -48,6 +47,9 @@ const SettingsPage = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
       // Determine the correct endpoint based on user type
       let endpoint = `${API_BASE_URL}/api/admin/change-password`;
       if (user && user.userType === 'department-head') {
@@ -58,43 +60,26 @@ const SettingsPage = ({ user }) => {
         endpoint = `${API_BASE_URL}/api/students/change-password`;
       }
       
-      // Prepare request data
-      const requestData = {
-        currentPassword,
-        newPassword
-      };
-      
-      // Debug logging
-      console.log('=== Password Change Request ===');
-      console.log('User:', user);
-      console.log('User type:', user?.userType);
-      console.log('API Base URL:', API_BASE_URL);
-      console.log('Endpoint:', endpoint);
-      console.log('Request data:', requestData);
-      console.log('Token:', token ? '[HIDDEN]' : 'MISSING');
-      
       const response = await fetch(endpoint, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({
+          currentPassword,
+          newPassword
+        })
       });
-      
-      console.log('Response status:', response.status);
-      console.log('Response headers:', [...response.headers.entries()]);
       
       // Check if response is JSON before parsing
       let data;
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
-        console.log('Response data:', data);
       } else {
         // If not JSON, it's likely an HTML error page
         const text = await response.text();
-        console.log('Response text:', text);
         data = { message: `Server error: ${response.status} ${response.statusText}` };
       }
       
