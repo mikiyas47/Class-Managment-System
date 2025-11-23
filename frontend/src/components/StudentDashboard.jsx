@@ -60,32 +60,48 @@ const StudentDashboard = ({ user, onLogout }) => {
           })
         ]);
 
-        const coursesData = await coursesRes.json();
-        const examsData = await examsRes.json();
-        const assignmentsData = await assignmentsRes.json();
-        const resultsData = await resultsRes.json();
-        const announcementsData = await announcementsRes.json();
+        // Check content type before parsing JSON
+        const coursesContentType = coursesRes.headers.get('content-type');
+        const examsContentType = examsRes.headers.get('content-type');
+        const assignmentsContentType = assignmentsRes.headers.get('content-type');
+        const resultsContentType = resultsRes.headers.get('content-type');
+        const announcementsContentType = announcementsRes.headers.get('content-type');
 
-        if (coursesData.status === 'success') {
-          setCourses(coursesData.data);
+        if (coursesContentType && coursesContentType.includes('application/json')) {
+          const coursesData = await coursesRes.json();
+          if (coursesData.status === 'success') {
+            setCourses(coursesData.data);
+          }
         }
 
-        if (examsData.status === 'success') {
-          setExams(examsData.data);
+        if (examsContentType && examsContentType.includes('application/json')) {
+          const examsData = await examsRes.json();
+          if (examsData.status === 'success') {
+            setExams(examsData.data);
+          }
         }
 
-        if (assignmentsData.status === 'success') {
-          setAssignments(assignmentsData.data);
+        if (assignmentsContentType && assignmentsContentType.includes('application/json')) {
+          const assignmentsData = await assignmentsRes.json();
+          if (assignmentsData.status === 'success') {
+            setAssignments(assignmentsData.data);
+          }
         }
 
-        if (resultsData.status === 'success') {
-          setResults(resultsData.data);
-        } else {
-          console.log('Error fetching results:', resultsData);
+        if (resultsContentType && resultsContentType.includes('application/json')) {
+          const resultsData = await resultsRes.json();
+          if (resultsData.status === 'success') {
+            setResults(resultsData.data);
+          } else {
+            console.log('Error fetching results:', resultsData);
+          }
         }
 
-        if (announcementsData.status === 'success') {
-          setAnnouncements(announcementsData.data);
+        if (announcementsContentType && announcementsContentType.includes('application/json')) {
+          const announcementsData = await announcementsRes.json();
+          if (announcementsData.status === 'success') {
+            setAnnouncements(announcementsData.data);
+          }
         }
 
         setLoading(false);
@@ -111,10 +127,14 @@ const StudentDashboard = ({ user, onLogout }) => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      const examsData = await examsRes.json();
+      // Check content type before parsing JSON
+      const examsContentType = examsRes.headers.get('content-type');
+      if (examsContentType && examsContentType.includes('application/json')) {
+        const examsData = await examsRes.json();
 
-      if (examsData.status === 'success') {
-        setExams(examsData.data);
+        if (examsData.status === 'success') {
+          setExams(examsData.data);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch exams:', err);
@@ -156,8 +176,14 @@ const StudentDashboard = ({ user, onLogout }) => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to download file');
+        // Check content type before parsing JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to download file');
+        } else {
+          throw new Error('Failed to download file');
+        }
       }
       
       const blob = await response.blob();

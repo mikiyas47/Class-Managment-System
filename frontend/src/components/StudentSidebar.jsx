@@ -21,8 +21,9 @@ const StudentSidebar = ({ user, activeTab, setActiveTab, onLogout, sidebarOpen, 
       ></div>
       
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-                      md:relative md:translate-x-0 w-64 bg-gradient-to-b from-blue-800 to-blue-900 text-white shadow-2xl z-30 transition-transform duration-300 ease-in-out`}>
+      <div className={`fixed md:static inset-y-0 left-0 transform transition-transform duration-300 ease-in-out
+                      ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                      md:translate-x-0 w-64 bg-gradient-to-b from-blue-800 to-blue-900 text-white shadow-2xl z-30`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between p-5 border-b border-blue-700">
