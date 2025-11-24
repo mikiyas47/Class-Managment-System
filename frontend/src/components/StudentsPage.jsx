@@ -237,6 +237,85 @@ const StudentsPage = ({ user }) => {
     setIsModalOpen(true);
   };
 
+  // Handle add/edit student
+  const handleAddStudent = async (e) => {
+    e.preventDefault();
+    try {
+      // Clear any previous modal errors
+      setModalError(null);
+      
+      // Ensure required fields are present
+      if (!formData.name || !formData.email || !formData.phoneNo || !formData.userId || (!editingStudent && !formData.password)) {
+        throw new Error('All fields are required');
+      }
+      
+      if (!editingStudent && formData.password.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
+      }
+      
+      // Ensure class and department are selected
+      if (!selectedClass) {
+        throw new Error('Please select a class');
+      }
+      
+      // Import the API base URL
+      const { API_BASE_URL } = await import('../api');
+      
+      const url = editingStudent 
+        ? `${API_BASE_URL}/api/students/${editingStudent._id}`
+        : `${API_BASE_URL}/api/students`;
+
+      const method = editingStudent ? 'PUT' : 'POST';
+      
+      const requestBody = { 
+        ...formData,
+        class: selectedClass,
+        department: getDepartmentIdFromClass(selectedClass)
+      };
+      
+      // Don't send password if it's not being updated
+      if (editingStudent && !formData.password) {
+        delete requestBody.password;
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to ${editingStudent ? 'update' : 'add'} student`);
+      }
+
+      // Refresh the students list
+      await fetchStudents(selectedClass);
+      handleModalClose();
+    } catch (err) {
+      setModalError(err.message);
+    }
+  };
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingStudent(null);
+    setModalError(null);
+    setFormData({
+      name: '',
+      userId: '',
+      email: '',
+      password: '',
+      phoneNo: '',
+      department: '',
+      class: ''
+    });
+  };
+
   // Initialize component
   useEffect(() => {
     // Fetch students, departments, and classes
