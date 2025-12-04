@@ -175,6 +175,35 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
     
+    // Check for overlapping schedules in the same room and day
+    const existingSchedules = await Schedule.find({
+      roomNumber,
+      dayOfWeek
+    });
+    
+    // Convert times to minutes for comparison
+    const newStartMinutes = startTotalMinutes;
+    const newEndMinutes = endTotalMinutes;
+    
+    // Check for time overlaps
+    const hasOverlap = existingSchedules.some(schedule => {
+      const [existingStartHours, existingStartMinutes] = schedule.startTime.split(':').map(Number);
+      const [existingEndHours, existingEndMinutes] = schedule.endTime.split(':').map(Number);
+      const existingStartTotalMinutes = existingStartHours * 60 + existingStartMinutes;
+      const existingEndTotalMinutes = existingEndHours * 60 + existingEndMinutes;
+      
+      // Check if the new schedule overlaps with existing schedule
+      // Overlap occurs when: (newStart < existingEnd) AND (newEnd > existingStart)
+      return (newStartMinutes < existingEndTotalMinutes) && (newEndMinutes > existingStartTotalMinutes);
+    });
+    
+    if (hasOverlap) {
+      return res.status(400).json({
+        message: 'Another schedule already exists for this room at the same time',
+        status: 'error'
+      });
+    }
+    
     // Create new schedule
     const schedule = new Schedule({
       class: classId,
@@ -309,6 +338,36 @@ router.put('/:id', authenticateToken, async (req, res) => {
           status: 'error'
         });
       }
+    }
+    
+    // Check for overlapping schedules in the same room and day (excluding the current schedule being updated)
+    const existingSchedules = await Schedule.find({
+      roomNumber,
+      dayOfWeek,
+      _id: { $ne: id }  // Exclude the current schedule being updated
+    });
+    
+    // Convert times to minutes for comparison
+    const newStartMinutes = startTotalMinutes;
+    const newEndMinutes = endTotalMinutes;
+    
+    // Check for time overlaps
+    const hasOverlap = existingSchedules.some(schedule => {
+      const [existingStartHours, existingStartMinutes] = schedule.startTime.split(':').map(Number);
+      const [existingEndHours, existingEndMinutes] = schedule.endTime.split(':').map(Number);
+      const existingStartTotalMinutes = existingStartHours * 60 + existingStartMinutes;
+      const existingEndTotalMinutes = existingEndHours * 60 + existingEndMinutes;
+      
+      // Check if the new schedule overlaps with existing schedule
+      // Overlap occurs when: (newStart < existingEnd) AND (newEnd > existingStart)
+      return (newStartMinutes < existingEndTotalMinutes) && (newEndMinutes > existingStartTotalMinutes);
+    });
+    
+    if (hasOverlap) {
+      return res.status(400).json({
+        message: 'Another schedule already exists for this room at the same time',
+        status: 'error'
+      });
     }
     
     const schedule = await Schedule.findByIdAndUpdate(
