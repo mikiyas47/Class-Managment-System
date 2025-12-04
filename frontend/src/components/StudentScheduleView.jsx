@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaBook, FaChalkboard } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaBook, FaChalkboard, FaFilter } from 'react-icons/fa';
 
 const StudentScheduleView = ({ studentId, token }) => {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [courseFilter, setCourseFilter] = useState(''); // Add course filter state
 
   // Fetch student schedules
   const fetchSchedules = async () => {
@@ -48,8 +49,30 @@ const StudentScheduleView = ({ studentId, token }) => {
     return days.indexOf(day);
   };
 
+  // Get unique courses for filter dropdown
+  const getUniqueCourses = () => {
+    const courses = schedules
+      .filter(schedule => schedule.course)
+      .map(schedule => ({
+        id: schedule.course._id,
+        subject: schedule.course.subject
+      }));
+    
+    // Remove duplicates
+    const uniqueCourses = courses.filter((course, index, self) => 
+      index === self.findIndex(c => c.id === course.id)
+    );
+    
+    return uniqueCourses;
+  };
+
+  // Filter schedules based on course filter
+  const filteredSchedules = courseFilter 
+    ? schedules.filter(schedule => schedule.course && schedule.course._id === courseFilter)
+    : schedules;
+
   // Sort schedules by day and time
-  const sortedSchedules = [...schedules].sort((a, b) => {
+  const sortedSchedules = [...filteredSchedules].sort((a, b) => {
     const dayComparison = getDayOrder(a.dayOfWeek) - getDayOrder(b.dayOfWeek);
     if (dayComparison !== 0) return dayComparison;
     
@@ -106,17 +129,38 @@ const StudentScheduleView = ({ studentId, token }) => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">My Class Schedule</h1>
-        <p className="text-sm text-gray-600">
-          Showing {schedules.length} scheduled classes for your class
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-4 gap-4">
+          <p className="text-sm text-gray-600">
+            Showing {filteredSchedules.length} of {schedules.length} scheduled classes
+          </p>
+          
+          {/* Course Filter Dropdown */}
+          <div className="flex items-center">
+            <FaFilter className="text-gray-500 mr-2" />
+            <select
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              className="rounded-md border border-gray-300 bg-white text-gray-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Courses</option>
+              {getUniqueCourses().map(course => (
+                <option key={course.id} value={course.id}>
+                  {course.subject}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
-      {schedules.length === 0 ? (
+      {filteredSchedules.length === 0 ? (
         <div className="bg-white rounded-lg shadow overflow-hidden p-8 text-center">
           <FaCalendarAlt className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No schedules found</h3>
           <p className="text-gray-500">
-            There are currently no schedules for your class. Please check back later.
+            {courseFilter 
+              ? "There are no schedules for the selected course. Try selecting a different course." 
+              : "There are currently no schedules for your class. Please check back later."}
           </p>
         </div>
       ) : (
