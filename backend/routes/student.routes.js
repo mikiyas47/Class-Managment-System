@@ -343,10 +343,16 @@ router.get('/:id/courses', authenticateToken, async (req, res) => {
     }
 
     // Get regular courses for the student's class
-    const regularCourses = await Course.find({ class: student.class._id })
-      .populate('department')
-      .populate('class')
-      .populate('teacher');
+    // Check if student has a class before querying
+    let regularCourses = [];
+    if (student.class && student.class._id) {
+      regularCourses = await Course.find({ class: student.class._id })
+        .populate('department')
+        .populate('class')
+        .populate('teacher');
+    } else {
+      regularCourses = [];
+    }
     
     // Get added courses for this student (including retake courses)
     // Include both 'enrolled' and 'pending' status records
@@ -366,15 +372,18 @@ router.get('/:id/courses', authenticateToken, async (req, res) => {
       .populate('originalClass');
     
     // Extract course details from added courses and mark them as retake courses
-    const addedCourses = addedCoursesRecords.map(record => {
-      const course = record.course.toObject();
-      course.isRetake = true;
-      course.originalClass = record.originalClass;
-      course.assignedClass = record.assignedClass;
-      course.retakeSemester = record.retakeSemester;
-      course.retakeStatus = record.status; // Add status information
-      return course;
-    });
+    // Filter out records where course is null before mapping
+    const addedCourses = addedCoursesRecords
+      .filter(record => record.course)
+      .map(record => {
+        const course = record.course.toObject();
+        course.isRetake = true;
+        course.originalClass = record.originalClass;
+        course.assignedClass = record.assignedClass;
+        course.retakeSemester = record.retakeSemester;
+        course.retakeStatus = record.status; // Add status information
+        return course;
+      });
     
     // Combine regular and added courses
     const allCourses = [...regularCourses, ...addedCourses];
@@ -815,11 +824,17 @@ router.get('/:id/schedules', authenticateToken, async (req, res) => {
     const Schedule = (await import('../Schedule.js')).default;
     
     // Find schedules for the student's class
-    const schedules = await Schedule.find({ class: student.class._id })
-      .populate('class')
-      .populate('course')
-      .populate('department')
-      .sort({ dayOfWeek: 1, startTime: 1 });
+    // Check if student has a class before querying
+    let schedules = [];
+    if (student.class && student.class._id) {
+      schedules = await Schedule.find({ class: student.class._id })
+        .populate('class')
+        .populate('course')
+        .populate('department')
+        .sort({ dayOfWeek: 1, startTime: 1 });
+    } else {
+      schedules = [];
+    }
     
     res.json({
       message: 'Schedules retrieved successfully',
@@ -858,8 +873,12 @@ router.get('/:id/assignments', authenticateToken, async (req, res) => {
     }
 
     // Get regular courses for the student's class
-    const regularCourses = await Course.find({ class: student.class._id });
-    const regularCourseIds = regularCourses.map(course => course._id);
+    // Check if student has a class before querying
+    let regularCourseIds = [];
+    if (student.class && student.class._id) {
+      const regularCourses = await Course.find({ class: student.class._id });
+      regularCourseIds = regularCourses.map(course => course._id);
+    }
     
     // Get added courses for this student (including retake courses)
     // Include both 'enrolled' and 'pending' status records
@@ -868,7 +887,10 @@ router.get('/:id/assignments', authenticateToken, async (req, res) => {
       status: { $in: ['enrolled', 'pending'] } 
     }).populate('course');
     
-    const addedCourseIds = addedCoursesRecords.map(record => record.course._id);
+    // Filter out records where course is null before mapping
+    const addedCourseIds = addedCoursesRecords
+      .filter(record => record.course && record.course._id)
+      .map(record => record.course._id);
     
     // Combine all course IDs
     const allCourseIds = [...regularCourseIds, ...addedCourseIds];
@@ -899,10 +921,14 @@ router.get('/:id/assignments', authenticateToken, async (req, res) => {
     for (let i = 0; i < assignments.length; i++) {
       const assignment = assignments[i];
       // Find courses that belong to the same class as this assignment and populate all fields
-      const courseForAssignment = await Course.findOne({ class: assignment.class._id || assignment.class })
-        .populate('teacher')
-        .populate('department')
-        .populate('class');
+      // Check if assignment has a class before querying
+      let courseForAssignment = null;
+      if (assignment.class) {
+        courseForAssignment = await Course.findOne({ class: assignment.class._id || assignment.class })
+          .populate('teacher')
+          .populate('department')
+          .populate('class');
+      }
       if (courseForAssignment) {
         // Add course information to the assignment
         assignment.course = courseForAssignment;
@@ -955,8 +981,12 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
     }
 
     // Get regular courses for the student's class
-    const regularCourses = await Course.find({ class: student.class._id });
-    const regularCourseIds = regularCourses.map(course => course._id);
+    // Check if student has a class before querying
+    let regularCourseIds = [];
+    if (student.class && student.class._id) {
+      const regularCourses = await Course.find({ class: student.class._id });
+      regularCourseIds = regularCourses.map(course => course._id);
+    }
     
     // Get added courses for this student (including retake courses)
     // Include both 'enrolled' and 'pending' status records
@@ -965,7 +995,10 @@ router.get('/:id/announcements', authenticateToken, async (req, res) => {
       status: { $in: ['enrolled', 'pending'] } 
     }).populate('course');
     
-    const addedCourseIds = addedCoursesRecords.map(record => record.course._id);
+    // Filter out records where course is null before mapping
+    const addedCourseIds = addedCoursesRecords
+      .filter(record => record.course && record.course._id)
+      .map(record => record.course._id);
     
     // Combine all course IDs
     const allCourseIds = [...regularCourseIds, ...addedCourseIds];

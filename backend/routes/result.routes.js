@@ -84,7 +84,10 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
     // Get regular courses for the student's class
     let regularCourses = [];
     try {
-      regularCourses = await Course.find({ class: student.class._id || student.class });
+      // Check if student has a class before querying
+      if (student.class) {
+        regularCourses = await Course.find({ class: student.class._id || student.class });
+      }
     } catch (courseError) {
       console.error('Error fetching regular courses:', courseError);
       // Return empty array if there's an error fetching courses

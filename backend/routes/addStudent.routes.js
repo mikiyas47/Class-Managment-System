@@ -112,11 +112,20 @@ router.post('/', authenticateToken, authorizeRole(['admin', 'department-head']),
     }
     
     // Get student's original class
-    const originalClass = await Class.findById(student.class._id || student.class);
-    if (!originalClass) {
-      return res.status(404).json({
+    // Check if student has a class before querying
+    let originalClass = null;
+    if (student.class) {
+      originalClass = await Class.findById(student.class._id || student.class);
+      if (!originalClass) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Student original class not found'
+        });
+      }
+    } else {
+      return res.status(400).json({
         status: 'error',
-        message: 'Student original class not found'
+        message: 'Student is not assigned to a class'
       });
     }
     
@@ -149,7 +158,7 @@ router.post('/', authenticateToken, authorizeRole(['admin', 'department-head']),
     // Create new add student record
     const addStudent = new AddStudent({
       student: studentId,
-      originalClass: student.class._id || student.class,
+      originalClass: student.class && student.class._id ? student.class._id : student.class,
       course: courseId,
       assignedClass: assignedClassId,
       retakeSemester
@@ -205,7 +214,11 @@ router.put('/:id', authenticateToken, authorizeRole(['admin', 'department-head']
       
       // Get student's original class
       const student = await Student.findById(addStudent.student);
-      const originalClass = await Class.findById(student.class);
+      // Check if student has a class before querying
+      let originalClass = null;
+      if (student && student.class) {
+        originalClass = await Class.findById(student.class);
+      }
       
       // Validate that assigned class is appropriate for retaking (should be same year or lower)
       // Compare both year and semester to determine if it's appropriate for retaking

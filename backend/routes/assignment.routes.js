@@ -124,7 +124,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     
     // If user is a teacher, check if they have access to this assignment
     if (user && user.userType === 'teacher' && user.teacherId) {
-      if (assignment.teacher._id.toString() !== user.teacherId) {
+      // Check if assignment has a teacher and the teacher has an _id before comparing
+      if (assignment.teacher && assignment.teacher._id && assignment.teacher._id.toString() !== user.teacherId) {
         return res.status(403).json({
           message: 'Access denied. You can only view assignments you created.',
           status: 'error'
@@ -440,7 +441,8 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
     // If user is a teacher, check if they have access to this assignment
     // If user is a student, allow download (students can download all assignments)
     if (user && user.userType === 'teacher' && user.teacherId) {
-      if (assignment.teacher._id.toString() !== user.teacherId) {
+      // Check if assignment has a teacher and the teacher has an _id before comparing
+      if (assignment.teacher && assignment.teacher._id && assignment.teacher._id.toString() !== user.teacherId) {
         return res.status(403).json({
           message: 'Access denied. You can only download assignments you created.',
           status: 'error'

@@ -219,7 +219,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     
     // If user is a teacher, check if they have access to this exam
     if (user && user.userType === 'teacher' && user.teacherId) {
-      if (exam.teacher._id.toString() !== user.teacherId) {
+      // Check if exam has a teacher and the teacher has an _id before comparing
+      if (exam.teacher && exam.teacher._id && exam.teacher._id.toString() !== user.teacherId) {
         return res.status(403).json({
           message: 'Access denied. You can only view exams you created.',
           status: 'error'
@@ -567,10 +568,14 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
     }
 
     // Get regular courses for the student's class
-    const regularCourses = await Course.find({ class: student.class._id });
-    console.log('Regular courses found:', regularCourses.length);
-    const regularCourseIds = regularCourses.map(course => course._id);
-    console.log('Regular course IDs:', regularCourseIds);
+    // Check if student has a class before querying
+    let regularCourseIds = [];
+    if (student.class && student.class._id) {
+      const regularCourses = await Course.find({ class: student.class._id });
+      console.log('Regular courses found:', regularCourses.length);
+      regularCourseIds = regularCourses.map(course => course._id);
+      console.log('Regular course IDs:', regularCourseIds);
+    }
     
     // Get added courses for this student (including retake courses)
     // Include both 'enrolled' and 'pending' status records
@@ -580,7 +585,10 @@ router.get('/student/:id', authenticateToken, async (req, res) => {
     }).populate('course');
     console.log('Added courses records found:', addedCoursesRecords.length);
     
-    const addedCourseIds = addedCoursesRecords.map(record => record.course._id);
+    // Filter out records where course is null before mapping
+    const addedCourseIds = addedCoursesRecords
+      .filter(record => record.course && record.course._id)
+      .map(record => record.course._id);
     console.log('Added course IDs:', addedCourseIds);
     
     // Combine all course IDs
